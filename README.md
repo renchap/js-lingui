@@ -1,7 +1,7 @@
 <div align="center">
 <h1>Lingui<sub>js</sub></h1>
 
-🌍📖 A readable, automated, and optimized (5 kb) internationalization for JavaScript
+🌍📖 A readable, automated, and optimized (3 kb) internationalization for JavaScript
 
 <hr />
 
@@ -11,9 +11,9 @@
 [![PRs Welcome][Badge-PRWelcome]][PRWelcome]
 [![Backers on Open Collective][Badge-ocbackers]][ocbackers-local]
 [![Sponsors on Open Collective][Badge-ocsponsors]][ocsponsors-local]
-[![Join the community on Spectrum](https://withspectrum.github.io/badge/badge.svg)][Spectrum]
+[![Join the community on Discord][Badge-Discord]][Discord]
 
-[**Documentation**][Documentation] · [**Documentation 2.x**](https://js-lingui-git-stable-2x.lingui-js.vercel.app/) · [**Quickstart**](#quickstart) · [**Example**](#example) · [**Support**](#support) · [**Contribute**](#contribute) · [**Licence**](#licence)
+[**Documentation**][Documentation] · [**Quickstart**](#quickstart) · [**Example**](#example) · [**Support**](#support) · [**Contribute**](#contribute) · [**License**](#license)
 </div>
 
 > Internationalization is the design and development of a product, application or document content that enables easy localization for target audiences that vary in culture, region, or language.
@@ -38,14 +38,14 @@ Lingui is an easy yet powerful internationalization framework for global project
   checks that all messages are translated before shipping to production.
 
 - **Unopinionated** - Integrate Lingui into your existing workflow. It supports
-  message keys as well as auto generated messages. Translations are stored either in
-  JSON or standard PO file, which is supported in almost all translation tools.
+  message keys as well as auto-generated messages. Translations are stored either in
+  JSON or standard PO files, which are supported in almost all translation tools.
 
-- **Lightweight and optimized** - Core library is only [1.9 kB gzipped][BundleCore],
-  React components are additional [3.1 kBs gzipped][BundleReact]. That's less than Redux
+- **Lightweight and optimized** - Core library is only [1.5 kB gzipped][BundleCore],
+  React components are an additional [1.3 kBs gzipped][BundleReact]. That's less than Redux
   for a full-featured intl library.
 
-- **Active community** - Join us on [Spectrum][Spectrum] to discuss the latest development.
+- **Active community** - Join us on [Discord][Discord] to discuss the latest development.
   At the moment, Lingui is the most active intl project on GitHub.
 
 - **Compatible with react-intl** - Low-level React API is very similar to react-intl
@@ -57,16 +57,22 @@ Lingui is an easy yet powerful internationalization framework for global project
 
 - [Create React App][TutorialSetupCRA]
 - [React projects][TutorialSetupReact]
+- [Vite project][SetupVite]
 
 ### Tutorials
 
 - [React][TutorialReact]
+- [Vue.js][TutorialVue]
 - [React Native][TutorialReactNative]
 - [Plain JavaScript][TutorialJavaScript]
 - [Working with Command Line Tool][TutorialCLI]
 
-If you're a react-intl user, checkout
-[comparison of react-intl and Lingui](https://lingui.js.org/misc/react-intl.html).
+### Plugins
+
+- [SWC Plugin][SWCPlugin]
+- [Vite Plugin][VitePlugin]
+
+If you're a react-intl user, check out [a comparison of react-intl and Lingui](https://lingui.dev/misc/react-intl).
 
 ## Example
 
@@ -78,7 +84,7 @@ import { Trans } from "@lingui/macro"
 function App() {
   return (
    <Trans id="msg.docs" /* id is optional */>
-     Read the <a href="https://lingui.js.org">documentation</a>
+     Read the <a href="https://lingui.dev">documentation</a>
      for more info.
    </Trans>
   )
@@ -92,29 +98,24 @@ msgid "msg.docs"
 msgstr "Read the <0>documentation</0> for more info."
 ```
 
-For more example see the [React tutorial][TutorialReact].
+For more example see the [Examples][Examples] directory.
 
 ## Support
 
 If you are having issues, please let us know.
 
-- Join us at [Gitter](https://gitter.im/lingui/js-lingui) to get almost instant feedback.
-- Ask question on [StackOverflow](https://stackoverflow.com/questions/ask?tags=jsLingui)
-  and mark it with [Lingui](https://stackoverflow.com/questions/tagged/jslingui) tag.
-- If something doesn't work as documented, documentation is missing or if you just want
-  to suggest a new feature, [create an issue][Issues].
+- Join us on [Discord](https://discord.gg/gFWwAYnMtA) to chat with the community.
+- Ask questions on [StackOverflow](https://stackoverflow.com/questions/ask?tags=linguijs) and mark it with [Lingui](https://stackoverflow.com/questions/tagged/linguijs) tag.
+- If something doesn't work as documented, documentation is missing or if you just want to suggest a new feature, [create an issue][Issues].
 
 ## Contribute
 
-Contribution to open-source project is everything from spreading a word, writing
-documentation to implementing features and fixing bugs.
+Contribution to open-source project is everything from spreading the word, writing documentation to implement features and fixing bugs.
 
 - Do you use **Lingui** in production site? Let us know!
-- Have you seen interesting talk or article about **i18n**?
-  [Share it](https://github.com/lingui/js-lingui/edit/main/docs/misc/talks-about-i18n.rst)!
+- Have you seen any interesting talk or article about **i18n**? [Share it](https://github.com/lingui/js-lingui/edit/main/website/docs/misc/resources.md)!
 - Have you found a bug or do you want to suggest a new feature? [Create an issue][Issues]!
-- Do you want to improve the docs and write some code?
-  Read the [contributors guide][Contributing] and send a PR!
+- Do you want to improve the docs and write some code? Read the [contributors guide][Contributing] and send a PR!
 
 ### Contributors
 
@@ -147,39 +148,40 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 
 The project is licensed under the [MIT][License] license.
 
-[ReactIntl]: https://github.com/yahoo/react-intl
-[Documentation]: https://lingui.js.org/
-[TutorialReact]: https://lingui.js.org/tutorials/react.html
-[TutorialReactNative]: https://lingui.js.org/tutorials/react-native.html
-[TutorialJavaScript]: https://lingui.js.org/tutorials/javascript.html
-[TutorialCLI]: https://lingui.js.org/tutorials/cli.html
-[TutorialSetupCRA]: https://lingui.js.org/tutorials/setup-cra.html
-[TutorialSetupReact]: https://lingui.js.org/tutorials/setup-react.html
-[RefCLI]: https://lingui.js.org/ref/cli.html
+[Documentation]: https://lingui.dev
+[TutorialReact]: https://lingui.dev/tutorials/react
+[TutorialReactNative]: https://lingui.dev/tutorials/react-native
+[TutorialJavaScript]: https://lingui.dev/tutorials/javascript
+[TutorialCLI]: https://lingui.dev/tutorials/cli
+[TutorialSetupCRA]: https://lingui.dev/tutorials/setup-cra
+[TutorialSetupReact]: https://lingui.dev/tutorials/setup-react
+[TutorialVue]: https://lingui.dev/tutorials/extractor-vue
+[SetupVite]: https://lingui.dev/tutorials/setup-vite
+[RefCLI]: https://lingui.dev/ref/cli
+[Examples]: https://github.com/lingui/js-lingui/tree/main/examples
+
+[SWCPlugin]: https://lingui.dev/ref/swc-plugin
+[VitePlugin]: https://lingui.dev/ref/vite-plugin
 
 [Badge-MainSuite-GithubCI]: https://github.com/lingui/js-lingui/workflows/main-suite/badge.svg
 [Badge-ReleaseWorkflowTesting-GithubCI]: https://github.com/lingui/js-lingui/workflows/release-workflow-test/badge.svg
-[Badge-CI]: https://img.shields.io/circleci/project/github/lingui/js-lingui/main.svg
-[Badge-AppVeyor]: https://ci.appveyor.com/api/projects/status/0wjdm3qofrjo2c4n/branch/main?svg=true
 [Badge-Coverage]: https://img.shields.io/codecov/c/github/lingui/js-lingui/main.svg
 [Badge-PRWelcome]: https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square
 [Badge-ocbackers]: https://opencollective.com/js-lingui/backers/badge.svg
+[Badge-Discord]: https://img.shields.io/discord/974702239358783608.svg?label=Discord&logo=Discord&colorB=7289da&style=flat-square
 [Badge-ocsponsors]: https://opencollective.com/js-lingui/sponsors/badge.svg
 [Img-Contributors]: https://opencollective.com/js-lingui/contributors.svg?width=890&button=false
 [Contributors]: https://github.com/lingui/js-lingui/graphs/contributors
 [Img-Backers]: https://opencollective.com/js-lingui/backers.svg?width=890
 [Backers]: https://opencollective.com/js-lingui#backers
 
-[CI]: https://circleci.com/gh/lingui/js-lingui/tree/main
-[AppVeyor]: https://ci.appveyor.com/project/tricoder42/js-lingui/branch/main
 [Coverage]: https://codecov.io/gh/lingui/js-lingui
 [License]: https://github.com/lingui/js-lingui/blob/main/LICENSE
 [Contributing]: https://github.com/lingui/js-lingui/blob/main/CONTRIBUTING.md
 [Issues]: https://github.com/lingui/js-lingui/issues/new/choose
 [PRWelcome]: http://makeapullrequest.com
-[Indiegogo]: https://igg.me/at/js-lingui/x/4367619
 [ocbackers-local]: #backers
 [ocsponsors-local]: #sponsors
 [BundleReact]: https://bundlephobia.com/result?p=@lingui/react
 [BundleCore]: https://bundlephobia.com/result?p=@lingui/core
-[Spectrum]: https://spectrum.chat/linguijs
+[Discord]: https://discord.gg/gFWwAYnMtA

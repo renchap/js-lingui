@@ -1,43 +1,88 @@
-import { CatalogFormatOptions, CatalogFormat } from "@lingui/conf"
+import type { CatalogFormat, CatalogFormatter } from "@lingui/conf"
+import { CatalogFormatOptions } from "@lingui/conf"
+import { FormatterWrapper } from "./formatterWrapper"
+import { makeInstall } from "../utils"
 
-import { CatalogType } from "../catalog"
+type CatalogFormatterFactoryFn = (options: any) => CatalogFormatter
 
-import lingui from "./lingui"
-import minimal from "./minimal"
-import po from "./po"
-import csv from "./csv"
+function createDeprecationError(
+  packageName: string,
+  format: string,
+  installCode: string
+) {
+  const installCmd = makeInstall(packageName)
 
-const formats: Record<CatalogFormat, CatalogFormatter> = {
-  lingui,
-  minimal,
-  po,
-  csv,
+  return `
+Format \`${format}\` is no longer included in \`@lingui/cli\` by default.
+You need to install it using ${installCmd} command and add to your \`lingui.config.{js,ts}\`:
+        
+import { formatter } from "${packageName}"
+
+export default {
+  [...]
+  format: ${installCode}
+}
+`.trim()
 }
 
-type CatalogFormatOptionsInternal = {
-  locale: string
-} & CatalogFormatOptions
+// Introduced in v4. Remove this deprecation in v5
+const formats: Record<CatalogFormat, () => Promise<CatalogFormatterFactoryFn>> =
+  {
+    lingui: async () => {
+      throw new Error(
+        createDeprecationError(
+          "@lingui/format-json",
+          "lingui",
+          'formatter({style: "lingui"})'
+        )
+      )
+    },
+    minimal: async () => {
+      throw new Error(
+        createDeprecationError(
+          "@lingui/format-json",
+          "minimal",
+          'formatter({style: "minimal"})'
+        )
+      )
+    },
+    po: async () => (await import("@lingui/format-po")).formatter,
+    csv: async () => {
+      throw new Error(
+        createDeprecationError("@lingui/format-csv", "csv", "formatter()")
+      )
+    },
+    "po-gettext": async () => {
+      throw new Error(
+        createDeprecationError(
+          "@lingui/format-po-gettext",
+          "po-gettext",
+          "formatter()"
+        )
+      )
+    },
+  }
 
-export type CatalogFormatter = {
-  catalogExtension: string
-  write(
-    filename: string,
-    catalog: CatalogType,
-    options?: CatalogFormatOptionsInternal
-  ): void
-  read(filename: string): CatalogType | null
-}
+export { FormatterWrapper }
 
-export default function getFormat(name: CatalogFormat): CatalogFormatter {
-  const format = formats[name]
+export async function getFormat(
+  _format: CatalogFormat | CatalogFormatter,
+  options: CatalogFormatOptions,
+  sourceLocale: string
+): Promise<FormatterWrapper> {
+  if (typeof _format !== "string") {
+    return new FormatterWrapper(_format, sourceLocale)
+  }
+
+  const format = formats[_format]
 
   if (!format) {
     throw new Error(
-      `Unknown format "${name}". Use one of following: ${Object.keys(
+      `Unknown format "${_format}". Use one of following: ${Object.keys(
         formats
       ).join(", ")}`
     )
   }
 
-  return format
+  return new FormatterWrapper((await format())(options), sourceLocale)
 }

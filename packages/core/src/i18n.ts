@@ -1,58 +1,90 @@
-import { interpolate } from "./context"
+import { interpolate, UNICODE_REGEX } from "./interpolate"
 import { isString, isFunction } from "./essentials"
 import { date, number } from "./formats"
-import * as icu from "./dev"
 import { EventEmitter } from "./eventEmitter"
+import { compileMessage } from "@lingui/message-utils/compileMessage"
+import type { CompiledMessage } from "@lingui/message-utils/compileMessage"
 
 export type MessageOptions = {
   message?: string
-  formats?: Object
+  formats?: Formats
+  comment?: string
 }
 
+export type { CompiledMessage }
 export type Locale = string
 export type Locales = Locale | Locale[]
+export type Formats = Record<
+  string,
+  Intl.DateTimeFormatOptions | Intl.NumberFormatOptions
+>
 
+export type Values = Record<string, unknown>
+
+/**
+ * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+ */
 export type LocaleData = {
-  plurals?: Function
+  plurals?: (
+    n: number,
+    ordinal?: boolean
+  ) => ReturnType<Intl.PluralRules["select"]>
 }
 
+/**
+ * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+ */
 export type AllLocaleData = Record<Locale, LocaleData>
-
-export type CompiledMessage =
-  | string
-  | Array<
-      string | Array<string | (string | undefined) | Record<string, unknown>>
-    >
 
 export type Messages = Record<string, CompiledMessage>
 
 export type AllMessages = Record<Locale, Messages>
 
 export type MessageDescriptor = {
-  id?: string
+  id: string
   comment?: string
   message?: string
   values?: Record<string, unknown>
 }
 
+export type MissingMessageEvent = {
+  locale: Locale
+  id: string
+}
+
+type MissingHandler = string | ((locale: string, id: string) => string)
+
 type setupI18nProps = {
   locale?: Locale
   locales?: Locales
   messages?: AllMessages
+  /**
+   * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+   */
   localeData?: AllLocaleData
-  missing?: string | ((message, id) => string)
+  missing?: MissingHandler
 }
 
 type Events = {
   change: () => void
+  missing: (event: MissingMessageEvent) => void
+}
+
+type LoadAndActivateOptions = {
+  /** initial active locale */
+  locale: Locale
+  /** list of alternative locales (BCP 47 language tags) which are used for number and date formatting */
+  locales?: Locales
+  /** compiled message catalog */
+  messages: Messages
 }
 
 export class I18n extends EventEmitter<Events> {
-  _locale: Locale
-  _locales: Locales
-  _localeData: AllLocaleData
-  _messages: AllMessages
-  _missing: string | ((message, id) => string)
+  private _locale: Locale
+  private _locales: Locales
+  private _localeData: AllLocaleData
+  private _messages: AllMessages
+  private _missing: MissingHandler
 
   constructor(params: setupI18nProps) {
     super()
@@ -80,11 +112,14 @@ export class I18n extends EventEmitter<Events> {
     return this._messages[this._locale] ?? {}
   }
 
+  /**
+   * @deprecated this has no effect. Please remove this from the code. Deprecated in v4
+   */
   get localeData(): LocaleData {
     return this._localeData[this._locale] ?? {}
   }
 
-  _loadLocaleData(locale: Locale, localeData: LocaleData) {
+  private _loadLocaleData(locale: Locale, localeData: LocaleData) {
     if (this._localeData[locale] == null) {
       this._localeData[locale] = localeData
     } else {
@@ -92,9 +127,17 @@ export class I18n extends EventEmitter<Events> {
     }
   }
 
+  /**
+   * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+   */
   public loadLocaleData(allLocaleData: AllLocaleData): void
+  /**
+   * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+   */
   public loadLocaleData(locale: Locale, localeData: LocaleData): void
-
+  /**
+   * @deprecated Plurals automatically used from Intl.PluralRules you can safely remove this call. Deprecated in v4
+   */
   loadLocaleData(localeOrAllData, localeData?) {
     if (localeData != null) {
       // loadLocaleData('en', enLocaleData)
@@ -111,7 +154,7 @@ export class I18n extends EventEmitter<Events> {
     this.emit("change")
   }
 
-  _load(locale: Locale, messages: Messages) {
+  private _load(locale: Locale, messages: Messages) {
     if (this._messages[locale] == null) {
       this._messages[locale] = messages
     } else {
@@ -138,16 +181,22 @@ export class I18n extends EventEmitter<Events> {
     this.emit("change")
   }
 
+  /**
+   * @param options {@link LoadAndActivateOptions}
+   */
+  loadAndActivate({ locale, locales, messages }: LoadAndActivateOptions) {
+    this._locale = locale
+    this._locales = locales || undefined
+
+    this._messages[this._locale] = messages
+
+    this.emit("change")
+  }
+
   activate(locale: Locale, locales?: Locales) {
     if (process.env.NODE_ENV !== "production") {
       if (!this._messages[locale]) {
         console.warn(`Messages for locale "${locale}" not loaded.`)
-      }
-
-      if (!this._localeData[locale]) {
-        console.warn(
-          `Locale data for locale "${locale}" not loaded. Plurals won't work correctly.`
-        )
       }
     }
 
@@ -157,9 +206,11 @@ export class I18n extends EventEmitter<Events> {
   }
 
   // method for translation and formatting
+  _(descriptor: MessageDescriptor): string
+  _(id: string, values?: Values, options?: MessageOptions): string
   _(
     id: MessageDescriptor | string,
-    values: Object | undefined = {},
+    values: Values | undefined = {},
     { message, formats }: MessageOptions | undefined = {}
   ) {
     if (!isString(id)) {
@@ -167,36 +218,50 @@ export class I18n extends EventEmitter<Events> {
       message = id.message
       id = id.id
     }
-    let translation = this.messages[id] || message || id
+
+    const messageMissing = !this.messages[id]
 
     // replace missing messages with custom message for debugging
     const missing = this._missing
-    if (missing && !this.messages[id]) {
-      return isFunction(missing) ? missing(this.locale, id) : missing
+    if (missing && messageMissing) {
+      return isFunction(missing) ? missing(this._locale, id) : missing
     }
+
+    if (messageMissing) {
+      this.emit("missing", { id, locale: this._locale })
+    }
+
+    let translation = this.messages[id] || message || id
 
     if (process.env.NODE_ENV !== "production") {
       translation = isString(translation)
-        ? icu.compile(translation)
+        ? compileMessage(translation)
         : translation
     }
 
+    // hack for parsing unicode values inside a string to get parsed in react native environments
+    if (isString(translation) && UNICODE_REGEX.test(translation))
+      return JSON.parse(`"${translation}"`) as string
     if (isString(translation)) return translation
 
     return interpolate(
       translation,
-      this.locale,
-      this.locales,
-      this.localeData
+      this._locale,
+      this._locales
     )(values, formats)
   }
 
+  /**
+   * Alias for {@see I18n._}
+   */
+  t: I18n["_"] = this._.bind(this)
+
   date(value: string | Date, format?: Intl.DateTimeFormatOptions): string {
-    return date(this.locales || this.locale, format)(value)
+    return date(this._locales || this._locale, value, format)
   }
 
   number(value: number, format?: Intl.NumberFormatOptions): string {
-    return number(this.locales || this.locale, format)(value)
+    return number(this._locales || this._locale, value, format)
   }
 }
 

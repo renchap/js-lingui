@@ -1,4 +1,6 @@
-export default [
+import { TestCase } from "./index"
+
+const cases: TestCase[] = [
   {
     name: "Nested macros",
     input: `
@@ -14,28 +16,47 @@ export default [
       `,
     expected: `
         import { i18n } from "@lingui/core";
-        /*i18n*/
-        i18n._("{gender, select, male {{numOfGuests, plural, one {He invites one guest} other {He invites # guests}}} female {She is {gender}} other {They is {gender}}}", {
-          gender: gender,
-          numOfGuests: numOfGuests
-        });
+        i18n._(
+          /*i18n*/
+          {
+            id: "G8xqGf",
+            message: "{gender, select, male {{numOfGuests, plural, one {He invites one guest} other {He invites # guests}}} female {She is {gender}} other {They is {gender}}}",
+            values: {
+              gender: gender,
+              numOfGuests: numOfGuests,
+            },
+          }
+        );
       `,
   },
   {
-    name: "Macro with escaped reserved props",
+    name: "Nested macros with pure expressions option",
     input: `
-        import { select } from '@lingui/macro'
-        select(value, {
-          id: 'test escaped id',
-          comment: 'test escaped comment'
-        })
+        import { select, plural } from '@lingui/macro'
+        select(gender, {
+          "male": plural(numOfGuests, {
+            one: "He invites one guest",
+            other: "He invites # guests"
+          }),
+          female: \`She is \${gender}\`,
+          other: someOtherExp
+        });
       `,
     expected: `
         import { i18n } from "@lingui/core";
-        /*i18n*/
-        i18n._("{value, select, id {test escaped id} comment {test escaped comment}}", {
-          value: value
-        });
+        i18n._(
+          /*i18n*/
+          {
+            id: "j9PNNm",
+            message: "{gender, select, male {{numOfGuests, plural, one {He invites one guest} other {He invites # guests}}} female {She is {gender}} other {{someOtherExp}}}",
+            values: {
+              gender: gender,
+              numOfGuests: numOfGuests,
+              someOtherExp: someOtherExp,
+            },
+          }
+        );
       `,
   },
 ]
+export default cases

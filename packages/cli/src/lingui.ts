@@ -1,22 +1,23 @@
 #!/usr/bin/env node
 
-import { helpMisspelledCommand } from "./api/utils"
+import { program } from "commander"
+import { readFileSync } from "node:fs"
+import path from "node:path"
 
-const program = require("commander")
-
-let version
-try {
-  version = require("./package.json").version
-} catch (e) {
-  version = "dev"
-}
+const packageJson = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../package.json"), "utf8")
+)
 
 program
-  .version(version)
-  .command("add-locale", "Deprecated, run it for instructions")
+  .version(packageJson.version)
   .command("extract [files...]", "Extracts messages from source files")
-  .command("extract-template", "Extracts messages from source files to a .pot template")
+  .command(
+    "extract-experimental",
+    "Extracts messages from source files traversing dependency tree"
+  )
+  .command(
+    "extract-template",
+    "Extracts messages from source files to a .pot template"
+  )
   .command("compile", "Compile message catalogs")
   .parse(process.argv)
-
-helpMisspelledCommand(process.argv[2], program.commands)

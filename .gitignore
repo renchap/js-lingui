@@ -1,9 +1,7 @@
 node_modules/
-build/packages/
 .yalc/
 yalc.lock
-packages/**/build
-docs/_build/
+dist
 
 npm-debug.log
 yarn-error.log
@@ -12,10 +10,15 @@ coverage/
 results/
 junit.xml
 
-__pycache__/
-.rpt2_cache/
-
 .DS_Store
 .vscode
 .idea
 *.iml
+
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

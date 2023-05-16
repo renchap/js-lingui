@@ -1,42 +1,44 @@
 import chalk from "chalk"
-import program from "commander"
+import { program } from "commander"
 
-import { getConfig, LinguiConfig } from "@lingui/conf"
+import { getConfig, LinguiConfigNormalized } from "@lingui/conf"
 
-import { getCatalogs } from "./api/catalog"
-import { detect } from "./api/detect"
+import { getCatalogs } from "./api"
+import nodepath from "path"
+import { normalizeSlashes } from "./api/utils"
 
 export type CliExtractTemplateOptions = {
   verbose: boolean
+  files?: string[]
 }
 
-export default function command(
-  config: LinguiConfig,
+export default async function command(
+  config: LinguiConfigNormalized,
   options: Partial<CliExtractTemplateOptions>
-): boolean {
-  // `react-app` babel plugin used by CRA requires either BABEL_ENV or NODE_ENV to be
-  // set. We're setting it here, because lingui macros are going to use them as well.
-  if (!process.env.BABEL_ENV && !process.env.NODE_ENV) {
-    process.env.BABEL_ENV = "development"
-  }
-
-  // We need macros to keep imports, so extract-messages plugin know what componets
-  // to collect. Users usually use both BABEN_ENV and NODE_ENV, so it's probably
-  // safer to introduce a new env variable. LINGUI_EXTRACT=1 during `lingui extract`
-  process.env.LINGUI_EXTRACT = "1"
-
-  options.verbose && console.error("Extracting messages from source files…")
-  const catalogs = getCatalogs(config)
+): Promise<boolean> {
+  options.verbose && console.log("Extracting messages from source files…")
+  const catalogs = await getCatalogs(config)
   const catalogStats: { [path: string]: Number } = {}
-  catalogs.forEach((catalog) => {
-    catalog.makeTemplate({
-      ...options,
-      orderBy: config.orderBy,
-      projectType: detect(),
-    })
 
-    catalogStats[catalog.templateFile] = Object.keys(catalog.readTemplate()).length
-  })
+  let commandSuccess = true
+
+  await Promise.all(
+    catalogs.map(async (catalog) => {
+      const result = await catalog.makeTemplate({
+        ...(options as CliExtractTemplateOptions),
+        orderBy: config.orderBy,
+      })
+
+      if (result) {
+        catalogStats[
+          normalizeSlashes(
+            nodepath.relative(config.rootDir, catalog.templateFile)
+          )
+        ] = Object.keys(result).length
+      }
+      commandSuccess &&= Boolean(result)
+    })
+  )
 
   Object.entries(catalogStats).forEach(([key, value]) => {
     console.log(
@@ -46,7 +48,13 @@ export default function command(
     )
     console.log()
   })
-  return true
+
+  return commandSuccess
+}
+
+type CliOptions = {
+  config?: string
+  verbose?: boolean
 }
 
 if (require.main === module) {
@@ -55,11 +63,15 @@ if (require.main === module) {
     .option("--verbose", "Verbose output")
     .parse(process.argv)
 
-  const config = getConfig({ configPath: program.config })
+  const options = program.opts<CliOptions>()
 
-  const result = command(config, {
-    verbose: program.verbose || false,
+  const config = getConfig({
+    configPath: options.config,
   })
 
-  if (!result) process.exit(1)
+  const result = command(config, {
+    verbose: options.verbose || false,
+  }).then(() => {
+    if (!result) process.exit(1)
+  })
 }

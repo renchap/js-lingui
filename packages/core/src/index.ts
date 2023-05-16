@@ -1,6 +1,6 @@
-export {
-  setupI18n,
-  I18n,
+export { setupI18n, I18n } from "./i18n"
+
+export type {
   AllMessages,
   MessageDescriptor,
   Messages,

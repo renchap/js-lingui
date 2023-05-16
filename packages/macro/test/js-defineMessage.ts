@@ -1,20 +1,84 @@
-export default [
+import { TestCase } from "./index"
+
+const cases: TestCase[] = [
+  {
+    name: "defineMessage should support template literal",
+    input: `
+        import { defineMessage } from '@lingui/macro';
+        const message = defineMessage\`Message\`
+    `,
+    expected: `
+        const message =
+          /*i18n*/
+          {
+            id: "xDAtGP",
+            message: "Message",
+          };
+    `,
+  },
+  {
+    name: "defineMessage can be called by alias `msg`",
+    input: `
+        import { msg } from '@lingui/macro';
+        const message1 = msg\`Message\`
+        const message2 = msg({message: "Message"})
+    `,
+    expected: `
+        const message1 =
+          /*i18n*/
+          {
+            id: "xDAtGP",
+            message: "Message",
+          };
+        const message2 =
+          /*i18n*/
+          {
+            message: "Message",
+            id: "xDAtGP",
+          };
+    `,
+  },
   {
     name: "should expand macros in message property",
     input: `
         import { defineMessage, plural, arg } from '@lingui/macro';
         const message = defineMessage({
           comment: "Description",
-          message: plural(arg("value"), { one: "book", other: "books" })
+          message: plural(value, { one: "book", other: "books" })
         })
     `,
     expected: `
-        import { i18n } from "@lingui/core";
         const message =
           /*i18n*/
           {
+            values: {
+              value: value,
+            },
+            message: "{value, plural, one {book} other {books}}",
+            id: "SlmyxX",
             comment: "Description",
-            id: "{value, plural, one {book} other {books}}"
+          };
+    `,
+  },
+  {
+    name: "defineMessage macro could be renamed",
+    input: `
+        import { defineMessage as defineMessage2, plural as plural2 } from '@lingui/macro';
+        const message = defineMessage2({
+          comment: "Description",
+          message: plural2(value, { one: "book", other: "books" })
+        })
+    `,
+    expected: `
+        const message =
+          /*i18n*/
+          {
+            values: {
+              value: value,
+            },
+            message: "{value, plural, one {book} other {books}}",
+            id: "SlmyxX",
+            comment: "Description",
           };
     `,
   },
@@ -27,11 +91,11 @@ export default [
         })
     `,
     expected: `
-        import { i18n } from "@lingui/core";
         const message =
           /*i18n*/
           {
-            id: "Message"
+            message: "Message",
+            id: "xDAtGP",
           };
     `,
   },
@@ -44,14 +108,14 @@ export default [
         })
     `,
     expected: `
-        import { i18n } from "@lingui/core";
         const message =
           /*i18n*/
           {
-            id: "Message {name}",
             values: {
               name: name
-            }
+            },
+            message: "Message {name}",
+            id: "A2aVLF",
           };
     `,
   },
@@ -65,13 +129,57 @@ export default [
         })
     `,
     expected: `
-        import { i18n } from "@lingui/core";
         const message =
           /*i18n*/
           {
             id: "msg.id",
             message: "Message"
           };
+    `,
+  },
+  {
+    name: "Production - only essential props are kept, without id",
+    production: true,
+    input: `
+        import { defineMessage } from '@lingui/macro';
+        const msg = defineMessage({
+            message: \`Hello $\{name\}\`,
+            comment: 'description for translators',
+            context: 'My Context',
+        })
+    `,
+    expected: `
+        const msg =
+          /*i18n*/
+          {
+            values: {
+              name: name,
+            },
+            id: "oT92lS",
+         };
+    `,
+  },
+  {
+    name: "Production - only essential props are kept",
+    production: true,
+    input: `
+        import { defineMessage } from '@lingui/macro';
+        const msg = defineMessage({
+            message: \`Hello $\{name\}\`,
+            id: 'msgId',
+            comment: 'description for translators',
+            context: 'My Context',
+        })
+    `,
+    expected: `
+        const msg =
+          /*i18n*/
+          {
+            id: 'msgId',
+            values: {
+              name: name,
+            },
+         };
     `,
   },
   {
@@ -83,15 +191,17 @@ export default [
         })
     `,
     expected: `
-        import { i18n } from "@lingui/core";
         const message =
           /*i18n*/
           {
-            id: "Hello {name}",
             values: {
               name: name
-            }
+            },
+            message: "Hello {name}",
+            id: "OVaF9k",
           };
     `,
   },
 ]
+
+export default cases

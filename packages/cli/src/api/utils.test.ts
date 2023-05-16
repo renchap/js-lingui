@@ -1,44 +1,65 @@
-import { mockConsole } from "@lingui/jest-mocks"
-import { helpMisspelledCommand } from "./utils"
+import { normalizeRelativePath, replacePlaceholders } from "./utils"
+import mockFs from "mock-fs"
 
-function getConsoleMockCalls({ mock }) {
-  if (!mock.calls.length) return
-  return mock.calls.map((call) => call[0]).join("\n")
-}
-
-describe("helpMisspelledCommand - show help for misspelled commands", function () {
-  function mockCommands(command, commandNames) {
-    return helpMisspelledCommand(
-      command,
-      commandNames.map((commandName) => ({ name: () => commandName }))
+describe("replacePlaceholders", () => {
+  it("should replace placeholders", () => {
+    const actual = replacePlaceholders(
+      "/foo/bar/{a}/{boo}/{a}/{place-holder}",
+      {
+        a: "a-value",
+        boo: "b-value",
+        ["place-holder"]: "place-holder-value",
+      }
     )
-  }
 
-  it("shouldn't output anything if command is valid", function () {
-    mockConsole((console) => {
-      mockCommands("compile", ["compile"])
-      expect(getConsoleMockCalls(console.log)).toBeUndefined()
-    })
+    expect(actual).toBe("/foo/bar/a-value/b-value/a-value/place-holder-value")
   })
 
-  it("shouldn't output anything if user passes no command", function () {
-    mockConsole((console) => {
-      mockCommands("", ["compile"])
-      expect(getConsoleMockCalls(console.log)).toMatchSnapshot()
+  it("should left unknown placeholders intact", () => {
+    const actual = replacePlaceholders("/foo/bar/{a}/{boo}/{a}", {
+      boo: "b-value",
     })
+
+    expect(actual).toBe("/foo/bar/{a}/b-value/{a}")
   })
 
-  it("should return command is invalid if no commands are configured", function () {
-    mockConsole((console) => {
-      mockCommands("compile", [])
-      expect(getConsoleMockCalls(console.log)).toMatchSnapshot()
+  it("should replace to empty string", () => {
+    const actual = replacePlaceholders("/foo/bar/{a}.file", {
+      a: "",
     })
+
+    expect(actual).toBe("/foo/bar/.file")
+  })
+})
+
+describe("normalizeRelativePath", () => {
+  afterEach(() => {
+    mockFs.restore()
   })
 
-  it("should return suggestions for mispelled", function () {
-    mockConsole((console) => {
-      mockCommands("compilesss", ["compile"])
-      expect(getConsoleMockCalls(console.log)).toMatchSnapshot()
+  it("should preserve absolute paths - posix", () => {
+    const absolute = "/my/directory"
+    expect(normalizeRelativePath(absolute)).toEqual(absolute)
+  })
+
+  it("should preserve absolute paths - win32", () => {
+    const absolute = "C:\\my\\directory"
+    // path remains the same, but separators are converted to posix
+    expect(normalizeRelativePath(absolute)).toEqual(
+      absolute.split("\\").join("/")
+    )
+  })
+
+  it("directories without ending slash are correctly treated as dirs", () => {
+    mockFs({
+      componentA: {
+        "index.js": mockFs.file(),
+      },
+      componentB: mockFs.file(),
     })
+    // checked correctly that is a dir, cuz added that ending slash
+    expect(normalizeRelativePath("./componentA")).toEqual("componentA/")
+    // ComponentB is a file shouldn't add ending slash
+    expect(normalizeRelativePath("./componentB")).toEqual("componentB")
   })
 })

@@ -1,32 +1,10 @@
 import fs from "fs"
 import path from "path"
-import chalk from "chalk"
-import { score } from "fuzzaldrin"
+import normalize from "normalize-path"
 
-export function removeDirectory(dir, onlyContent = false) {
-  if (!fs.existsSync(dir)) return
-  const list = fs.readdirSync(dir)
+export const PATHSEP = "/" // force posix everywhere
 
-  for (let i = 0; i < list.length; i++) {
-    const filename = path.join(dir, list[i])
-    const stat = fs.statSync(filename)
-
-    if (filename === "." || filename === "..") {
-      // pass these files
-    } else if (stat.isDirectory()) {
-      // rmdir recursively
-      removeDirectory(filename)
-    } else {
-      fs.unlinkSync(filename)
-    }
-  }
-
-  if (!onlyContent) {
-    fs.rmdirSync(dir)
-  }
-}
-
-export function prettyOrigin(origins) {
+export function prettyOrigin(origins: [filename: string, line?: number][]) {
   try {
     return origins.map((origin) => origin.join(":")).join(", ")
   } catch (e) {
@@ -34,55 +12,75 @@ export function prettyOrigin(origins) {
   }
 }
 
-/**
- * .. js:function:: helpMisspelledCommand(command [, availableCommands = []])
- *    :param: command - command passed to CLI
- *    :param: availableCommands - all commands defined in commander.js
- *
- *    If unknown commands is passed to CLI, check it agains all available commands
- *    for possible misspelled letter. Output help with suggestions to console.
- */
-export function helpMisspelledCommand(command, availableCommands = []) {
-  const commandNames = availableCommands.map((command) => command.name())
+export function replacePlaceholders(
+  input: string,
+  values: Record<string, string>
+): string {
+  return input.replace(/\{([^}]+)}/g, (m, placeholder) => {
+    return values[placeholder] ?? m
+  })
+}
 
-  // if no command is supplied, then commander.js shows help automatically
-  if (!command || commandNames.includes(command)) {
-    return
-  }
+export const splitOrigin = (origin: string) => {
+  const [file, line] = origin.split(":")
+  return [file, line ? Number(line) : null] as [file: string, line: number]
+}
 
-  const suggestions = commandNames
-    .map((name) => ({
-      name,
-      score: score(name, command.slice(0, name.length)),
-    }))
-    .filter((nameScore) => nameScore.score > 0)
-    .slice(0, 3)
-    .map((commandScore) => chalk.inverse(commandScore.name))
-    .join(", ")
+export const joinOrigin = (origin: [file: string, line?: number]): string =>
+  origin.join(":")
 
-  console.log(
-    `lingui: command ${command} is not a lingui command. ` +
-      `See 'lingui --help' for the list of available commands.`
-  )
-
-  if (suggestions) {
-    console.log()
-    console.log(`Did you mean: ${suggestions}?`)
+export async function readFile(fileName: string): Promise<string | undefined> {
+  try {
+    return (await fs.promises.readFile(fileName)).toString()
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code != "ENOENT") {
+      throw err
+    }
   }
 }
 
-export const splitOrigin = (origin) => origin.split(":")
+async function mkdirp(dir: string): Promise<void> {
+  try {
+    await fs.promises.mkdir(dir, {
+      recursive: true,
+    })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code != "EEXIST") {
+      throw err
+    }
+  }
+}
 
-export const joinOrigin = (origin) => origin.join(":")
+export function isDirectory(filePath: string) {
+  try {
+    return fs.lstatSync(filePath).isDirectory()
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code != "ENOENT") {
+      throw err
+    }
+  }
+}
 
-export function writeFileIfChanged(filename, newContent) {
-  if (fs.existsSync(filename)) {
-    const raw = fs.readFileSync(filename).toString()
+export async function writeFile(
+  fileName: string,
+  content: string
+): Promise<void> {
+  await mkdirp(path.dirname(fileName))
+  await fs.promises.writeFile(fileName, content)
+}
+
+export async function writeFileIfChanged(
+  filename: string,
+  newContent: string
+): Promise<void> {
+  const raw = await readFile(filename)
+
+  if (raw) {
     if (newContent !== raw) {
-      fs.writeFileSync(filename, newContent)
+      await writeFile(filename, newContent)
     }
   } else {
-    fs.writeFileSync(filename, newContent)
+    await writeFile(filename, newContent)
   }
 }
 
@@ -90,11 +88,38 @@ export function hasYarn() {
   return fs.existsSync(path.resolve("yarn.lock"))
 }
 
-export function makeInstall() {
+export function makeInstall(packageName: string, dev: boolean = false) {
   const withYarn = hasYarn()
 
-  return (packageName: string, dev: boolean = false) =>
-    withYarn
-      ? `yarn add ${dev ? "--dev " : ""}${packageName}`
-      : `npm install ${dev ? "--save-dev" : "--save"} ${packageName}`
+  return withYarn
+    ? `yarn add ${dev ? "--dev " : ""}${packageName}`
+    : `npm install ${dev ? "--save-dev" : "--save"} ${packageName}`
+}
+
+/**
+ * Normalize Windows backslashes in path so they look always as posix
+ */
+export function normalizeSlashes(path: string) {
+  return path.replace("\\", "/")
+}
+
+/**
+ * Remove ./ at the beginning: ./relative  => relative
+ *                             relative    => relative
+ * Preserve directories:       ./relative/ => relative/
+ * Preserve absolute paths:    /absolute/path => /absolute/path
+ */
+export function normalizeRelativePath(sourcePath: string): string {
+  if (path.isAbsolute(sourcePath)) {
+    // absolute path
+    return normalize(sourcePath, false)
+  }
+
+  // https://github.com/lingui/js-lingui/issues/809
+  const isDir = isDirectory(sourcePath)
+
+  return (
+    normalize(path.relative(process.cwd(), sourcePath), false) +
+    (isDir ? "/" : "")
+  )
 }

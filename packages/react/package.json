@@ -1,9 +1,11 @@
 {
   "name": "@lingui/react",
-  "version": "3.2.3",
+  "version": "4.1.0",
+  "sideEffects": false,
   "description": "React components for translations",
-  "main": "index.js",
-  "types": "cjs/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "author": {
     "name": "Tomáš Ehrlich",
     "email": "tomas.ehrlich@gmail.com"
@@ -12,13 +14,22 @@
   "keywords": [
     "react",
     "component",
+    "react-component",
+    "react-native",
     "i18n",
     "internationalization",
     "i9n",
     "translation",
     "icu",
-    "messageformat"
+    "messageformat",
+    "multilingual",
+    "localization",
+    "l10n"
   ],
+  "scripts": {
+    "build": "rimraf ./dist && unbuild",
+    "stub": "unbuild --stub"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/lingui/js-lingui.git"
@@ -27,22 +38,41 @@
     "url": "https://github.com/lingui/js-lingui/issues"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=16.0.0"
+  },
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "LICENSE",
     "README.md",
-    "index.js",
-    "cjs/"
+    "dist/"
   ],
   "peerDependencies": {
-    "react": "^16.8.0 || ^17.0.0"
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0"
   },
   "dependencies": {
-    "@babel/runtime": "^7.11.2",
-    "@lingui/core": "^3.2.3"
+    "@babel/runtime": "^7.20.13",
+    "@lingui/core": "4.1.0"
   },
   "devDependencies": {
-    "react-testing-library": "^8.0.1"
+    "@lingui/jest-mocks": "*",
+    "@testing-library/react": "^11.0.4",
+    "@types/react": "^17.0.56",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "unbuild": "^1.1.2"
   }
 }

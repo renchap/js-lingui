@@ -1,135 +1,347 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Catalog POT Flow Should get translations from template if locale file not presented 1`] = `
+{
+  2ZeN02: Test String,
+  mY42CM: Hello World,
+}
+`;
+
 exports[`Catalog collect should extract messages from source files 1`] = `
-Object {
-  Component A: Object {
-    extractedComments: Array [],
-    origin: Array [
-      Array [
+{
+  Component A: {
+    comments: [],
+    context: undefined,
+    message: undefined,
+    origin: [
+      [
         collect/componentA/componentA.js,
         1,
       ],
     ],
   },
-  Component B: Object {
-    extractedComments: Array [],
-    origin: Array [
-      Array [
+  Component B: {
+    comments: [],
+    context: undefined,
+    message: undefined,
+    origin: [
+      [
         collect/componentB.js,
         1,
       ],
     ],
   },
-  Hello World: Object {
-    extractedComments: Array [
+  Hello World: {
+    comments: [
       Comment A,
       Comment A again,
       Hello comment,
     ],
-    origin: Array [
-      Array [
+    context: undefined,
+    message: undefined,
+    origin: [
+      [
         collect/componentA/componentA.js,
         2,
       ],
-      Array [
+      [
         collect/componentA/componentA.js,
         3,
       ],
-      Array [
+      [
         collect/componentA/index.js,
         1,
+      ],
+    ],
+  },
+  custom.id: {
+    comments: [],
+    context: undefined,
+    message: Message with id,
+    origin: [
+      [
+        collect/componentA/componentA.js,
+        4,
       ],
     ],
   },
 }
 `;
 
-exports[`Catalog collect should handle errors 1`] = `Object {}`;
+exports[`Catalog collect should extract only files passed on options 1`] = `
+{
+  Component A: {
+    comments: [],
+    context: undefined,
+    message: undefined,
+    origin: [
+      [
+        collect/componentA/componentA.js,
+        1,
+      ],
+    ],
+  },
+  Hello World: {
+    comments: [
+      Comment A,
+      Comment A again,
+      Hello comment,
+    ],
+    context: undefined,
+    message: undefined,
+    origin: [
+      [
+        collect/componentA/componentA.js,
+        2,
+      ],
+      [
+        collect/componentA/componentA.js,
+        3,
+      ],
+      [
+        collect/componentA/index.js,
+        1,
+      ],
+    ],
+  },
+  custom.id: {
+    comments: [],
+    context: undefined,
+    message: Message with id,
+    origin: [
+      [
+        collect/componentA/componentA.js,
+        4,
+      ],
+    ],
+  },
+}
+`;
+
+exports[`Catalog collect should support Flow syntax if enabled 1`] = `{}`;
+
+exports[`Catalog collect should support JSX and Typescript 1`] = `
+{
+  ID Some: {
+    comments: [],
+    context: undefined,
+    message: Message with id some,
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        11,
+      ],
+    ],
+  },
+  MHrjPM: {
+    comments: [],
+    context: undefined,
+    message: Title,
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        19,
+      ],
+    ],
+  },
+  Nu4oKW: {
+    comments: [
+      description,
+    ],
+    context: undefined,
+    message: Description,
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        6,
+      ],
+    ],
+  },
+  YikuIL: {
+    comments: [],
+    context: Context1,
+    message: Some message,
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        18,
+      ],
+    ],
+  },
+  d1Kdl3: {
+    comments: [],
+    context: undefined,
+    message: Hi, my name is {name},
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        17,
+      ],
+    ],
+  },
+  esnaQO: {
+    comments: [],
+    context: undefined,
+    message: {count, plural, one {# book} other {# books}},
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        21,
+      ],
+    ],
+  },
+  xDAtGP: {
+    comments: [],
+    context: undefined,
+    message: Message,
+    origin: [
+      [
+        collect-typescript-jsx/macro.tsx,
+        4,
+      ],
+    ],
+  },
+}
+`;
 
 exports[`Catalog make should collect and write catalogs 1`] = `
-Object {
+{
   cs: null,
   en: null,
 }
 `;
 
 exports[`Catalog make should collect and write catalogs 2`] = `
-Object {
-  cs: Object {
-    Component A: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+{
+  cs: {
+    Component A: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           1,
         ],
       ],
       translation: ,
     },
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [
+    Hello World: {
+      comments: [
         Comment A,
         Comment A again,
         Hello comment,
+        js-lingui-explicit-id,
       ],
-      flags: Array [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           2,
         ],
-        Array [
+        [
           collect/componentA/componentA.js,
           3,
         ],
-        Array [
+        [
           collect/componentA/index.js,
           1,
+        ],
+      ],
+      translation: ,
+    },
+    custom.id: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      obsolete: false,
+      origin: [
+        [
+          collect/componentA/componentA.js,
+          4,
         ],
       ],
       translation: ,
     },
   },
-  en: Object {
-    Component A: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+  en: {
+    Component A: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           1,
         ],
       ],
       translation: ,
     },
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [
+    Hello World: {
+      comments: [
         Comment A,
         Comment A again,
         Hello comment,
+        js-lingui-explicit-id,
       ],
-      flags: Array [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           2,
         ],
-        Array [
+        [
           collect/componentA/componentA.js,
           3,
         ],
-        Array [
+        [
           collect/componentA/index.js,
           1,
+        ],
+      ],
+      translation: ,
+    },
+    custom.id: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      obsolete: false,
+      origin: [
+        [
+          collect/componentA/componentA.js,
+          4,
         ],
       ],
       translation: ,
@@ -139,24 +351,32 @@ Object {
 `;
 
 exports[`Catalog make should merge with existing catalogs 1`] = `
-Object {
-  cs: Object {
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+{
+  cs: {
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
       obsolete: false,
-      origin: Array [],
+      origin: [],
       translation: Ahoj Brno,
     },
   },
-  en: Object {
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+  en: {
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
       obsolete: false,
-      origin: Array [],
+      origin: [],
       translation: Ahoj Brno,
     },
   },
@@ -164,110 +384,198 @@ Object {
 `;
 
 exports[`Catalog make should merge with existing catalogs 2`] = `
-Object {
-  cs: Object {
-    Component A: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+{
+  cs: {
+    Component A: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           1,
         ],
       ],
       translation: ,
     },
-    Component B: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+    Component B: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentB.js,
           1,
         ],
       ],
       translation: ,
     },
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [
+    Hello World: {
+      comments: [
         Comment A,
         Comment A again,
         Hello comment,
+        js-lingui-explicit-id,
       ],
-      flags: Array [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           2,
         ],
-        Array [
+        [
           collect/componentA/componentA.js,
           3,
         ],
-        Array [
+        [
           collect/componentA/index.js,
           1,
         ],
       ],
+      translation: ,
+    },
+    custom.id: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      obsolete: false,
+      origin: [
+        [
+          collect/componentA/componentA.js,
+          4,
+        ],
+      ],
+      translation: ,
+    },
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
+      obsolete: true,
+      origin: [],
       translation: Ahoj Brno,
     },
   },
-  en: Object {
-    Component A: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+  en: {
+    Component A: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           1,
         ],
       ],
       translation: ,
     },
-    Component B: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+    Component B: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentB.js,
           1,
         ],
       ],
       translation: ,
     },
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [
+    Hello World: {
+      comments: [
         Comment A,
         Comment A again,
         Hello comment,
+        js-lingui-explicit-id,
       ],
-      flags: Array [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           2,
         ],
-        Array [
+        [
           collect/componentA/componentA.js,
           3,
         ],
-        Array [
+        [
           collect/componentA/index.js,
           1,
         ],
       ],
+      translation: ,
+    },
+    custom.id: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      obsolete: false,
+      origin: [
+        [
+          collect/componentA/componentA.js,
+          4,
+        ],
+      ],
+      translation: ,
+    },
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
+      obsolete: true,
+      origin: [],
       translation: Ahoj Brno,
     },
   },
@@ -275,50 +583,77 @@ Object {
 `;
 
 exports[`Catalog make should only update the specified locale 1`] = `
-Object {
+{
   cs: null,
   en: null,
 }
 `;
 
 exports[`Catalog make should only update the specified locale 2`] = `
-Object {
+{
   cs: null,
-  en: Object {
-    Component A: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+  en: {
+    Component A: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           1,
         ],
       ],
       translation: ,
     },
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [
+    Hello World: {
+      comments: [
         Comment A,
         Comment A again,
         Hello comment,
+        js-lingui-explicit-id,
       ],
-      flags: Array [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
       obsolete: false,
-      origin: Array [
-        Array [
+      origin: [
+        [
           collect/componentA/componentA.js,
           2,
         ],
-        Array [
+        [
           collect/componentA/componentA.js,
           3,
         ],
-        Array [
+        [
           collect/componentA/index.js,
           1,
+        ],
+      ],
+      translation: ,
+    },
+    custom.id: {
+      comments: [
+        js-lingui-explicit-id,
+      ],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      obsolete: false,
+      origin: [
+        [
+          collect/componentA/componentA.js,
+          4,
         ],
       ],
       translation: ,
@@ -330,41 +665,68 @@ Object {
 exports[`Catalog makeTemplate should collect and write a template 1`] = `null`;
 
 exports[`Catalog makeTemplate should collect and write a template 2`] = `
-Object {
-  Component A: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
+{
+  Component A: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         collect/componentA/componentA.js,
         1,
       ],
     ],
     translation: ,
   },
-  Hello World: Object {
-    comments: Array [],
-    extractedComments: Array [
+  Hello World: {
+    comments: [
       Comment A,
       Comment A again,
       Hello comment,
+      js-lingui-explicit-id,
     ],
-    flags: Array [],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         collect/componentA/componentA.js,
         2,
       ],
-      Array [
+      [
         collect/componentA/componentA.js,
         3,
       ],
-      Array [
+      [
         collect/componentA/index.js,
         1,
+      ],
+    ],
+    translation: ,
+  },
+  custom.id: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
+    obsolete: false,
+    origin: [
+      [
+        collect/componentA/componentA.js,
+        4,
       ],
     ],
     translation: ,
@@ -373,92 +735,145 @@ Object {
 `;
 
 exports[`Catalog read should read file in given format 1`] = `
-Object {
-  obsolete: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
+{
+  obsolete: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: true,
-    origin: Array [],
+    origin: [],
     translation: Is marked as obsolete,
   },
-  static: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
+  static: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [],
+    origin: [],
     translation: Static message,
   },
-  veryLongString: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
+  veryLongString: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [],
+    origin: [],
     translation: One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought. It wasn't a dream. His room, a proper human,
   },
-  withComments: Object {
-    comments: Array [
-      Translator comment,
-      This one might come from developer,
+  withComments: {
+    comments: [
+      js-lingui-explicit-id,
     ],
-    extractedComments: Array [],
-    flags: Array [],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [
+        Translator comment,
+        This one might come from developer,
+      ],
+    },
     obsolete: false,
-    origin: Array [],
+    origin: [],
     translation: Support translator comments separately,
   },
-  withDescription: Object {
-    comments: Array [],
-    extractedComments: Array [
+  withDescription: {
+    comments: [
       Description is comment from developers to translators,
+      js-lingui-explicit-id,
     ],
-    flags: Array [],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [],
+    origin: [],
     translation: Message with description,
   },
-  withFlags: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [
-      fuzzy,
-      otherFlag,
+  withMultipleOrigins: {
+    comments: [
+      js-lingui-explicit-id,
     ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [],
-    translation: Keeps any flags that are defined,
-  },
-  withMultipleOrigins: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
-    obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         src/App.js,
         4,
       ],
-      Array [
+      [
         src/Component.js,
         2,
       ],
     ],
     translation: Message with multiple origin,
   },
-  withOrigin: Object {
-    comments: Array [],
-    extractedComments: Array [],
-    flags: Array [],
+  withOrigin: {
+    comments: [
+      js-lingui-explicit-id,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         src/App.js,
         4,
       ],
     ],
     translation: Message with origin,
+  },
+  xC8QeX: {
+    comments: [
+      js-lingui-id: pXy+hm,
+    ],
+    context: null,
+    extra: {
+      flags: [],
+      translatorComments: [],
+    },
+    message: Message with default hash id,
+    obsolete: false,
+    origin: [],
+    translation: Translation for: Message with default-hash id,
+  },
+  xLTujh: {
+    comments: [],
+    context: null,
+    extra: {
+      flags: [
+        fuzzy,
+        otherFlag,
+        explicit-id,
+      ],
+      translatorComments: [],
+    },
+    message: withFlags,
+    obsolete: false,
+    origin: [],
+    translation: Keeps any flags that are defined,
   },
 }
 `;
@@ -466,57 +881,44 @@ Object {
 exports[`Catalog read should read file in previous format 1`] = `null`;
 
 exports[`Catalog readAll should read existing catalogs for all locales 1`] = `
-Object {
-  cs: Object {
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+{
+  cs: {
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
       obsolete: false,
-      origin: Array [],
+      origin: [],
       translation: Ahoj Brno,
     },
   },
-  en: Object {
-    Hello World: Object {
-      comments: Array [],
-      extractedComments: Array [],
-      flags: Array [],
+  en: {
+    mY42CM: {
+      comments: [],
+      context: null,
+      extra: {
+        flags: [],
+        translatorComments: [],
+      },
+      message: Hello World,
       obsolete: false,
-      origin: Array [],
+      origin: [],
       translation: Hello World,
     },
   },
 }
 `;
 
-exports[`Catalog should convert catalog format 1`] = `
-msgid ""
-msgstr ""
-"Project-Id-Version: \\n"
-"Report-Msgid-Bugs-To: \\n"
-"POT-Creation-Date: \\n"
-"PO-Revision-Date: \\n"
-"Last-Translator: \\n"
-"Language: \\n"
-"Language-Team: \\n"
-"Content-Type: \\n"
-"Content-Transfer-Encoding: \\n"
-"Plural-Forms: \\n"
-
-msgid "static"
-msgstr "Static message"
-
-msgid "veryLongString"
-msgstr "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. \\"What's happened to me?\\" he thought. It wasn't a dream. His room, a proper human"
-`;
-
 exports[`cleanObsolete should remove obsolete messages from catalog 1`] = `
-Object {
-  Label: Object {
+{
+  Label: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         catalog.test.ts,
         1,
       ],
@@ -526,48 +928,42 @@ Object {
 }
 `;
 
-exports[`getCatalogs should warn about missing {name} pattern in catalog path 1`] = `Catalog with path "./locales/{locale}" doesn't have a {name} pattern in it, but one of source directories uses it: "{name}". Either add {name} pattern to "./locales/{locale}" or remove it from all source directories.`;
-
-exports[`getCatalogs should warn if catalogPath is a directory 1`] = `Remove trailing slash from "./locales/{locale}/". Catalog path isn't a directory, but translation file without extension. For example, catalog path "./locales/{locale}" results in translation file "./locales/en.po".`;
-
-exports[`getCatalogs should warn if catalogPath is a directory 2`] = `Remove trailing slash from "./locales/{locale}/". Catalog path isn't a directory, but translation file without extension. For example, catalog path "./locales/{locale}" results in translation file "./locales/cs.json".`;
-
 exports[`order should order messages alphabetically 1`] = `
-Object {
-  LabelA: Object {
+{
+  LabelA: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         catalog.test.ts,
         1,
       ],
     ],
     translation: A,
   },
-  LabelB: Object {
+  LabelB: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         catalog.test.ts,
         1,
       ],
     ],
     translation: B,
   },
-  LabelC: Object {
+  LabelC: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         catalog.test.ts,
         1,
       ],
     ],
     translation: C,
   },
-  LabelD: Object {
+  LabelD: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         catalog.test.ts,
         1,
       ],
@@ -578,7 +974,7 @@ Object {
 `;
 
 exports[`order should order messages alphabetically 2`] = `
-Array [
+[
   LabelA,
   LabelB,
   LabelC,
@@ -587,45 +983,45 @@ Array [
 `;
 
 exports[`order should order messages by origin 1`] = `
-Object {
-  LabelA: Object {
+{
+  LabelA: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         file2.js,
         3,
       ],
     ],
     translation: A,
   },
-  LabelB: Object {
+  LabelB: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         file1.js,
         2,
       ],
-      Array [
+      [
         file2.js,
         2,
       ],
     ],
     translation: B,
   },
-  LabelC: Object {
+  LabelC: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         file1.js,
         1,
       ],
     ],
     translation: C,
   },
-  LabelD: Object {
+  LabelD: {
     obsolete: false,
-    origin: Array [
-      Array [
+    origin: [
+      [
         file2.js,
         100,
       ],
@@ -636,7 +1032,7 @@ Object {
 `;
 
 exports[`order should order messages by origin 2`] = `
-Array [
+[
   LabelC,
   LabelB,
   LabelA,

@@ -1,52 +1,156 @@
-import fs from "fs"
-import fsPath from "path"
-import mkdirp from "mkdirp"
-import generate from "@babel/generator"
-import { getConfig } from "@lingui/conf"
+import type * as BabelTypesNamespace from "@babel/types"
+import {
+  Expression,
+  Identifier,
+  ImportSpecifier,
+  JSXAttribute,
+  Node,
+  ObjectExpression,
+  ObjectProperty,
+} from "@babel/types"
+import type { PluginObj, PluginPass } from "@babel/core"
+import type { NodePath } from "@babel/core"
+import type { Hub } from "@babel/traverse"
 
-const CONFIG = Symbol("I18nConfig")
+type BabelTypes = typeof BabelTypesNamespace
 
-// Map of messages
-const MESSAGES = Symbol("I18nMessages")
+export type ExtractedMessage = {
+  id: string
 
-// We need to remember all processed nodes. When JSX expressions are
-// replaced with CallExpressions, all children are traversed for each CallExpression.
-// Then, i18n._ methods are visited multiple times for each parent CallExpression.
-const VISITED = Symbol("I18nVisited")
+  message?: string
+  context?: string
+  origin?: Origin
 
-function addMessage(
-  path,
-  messages,
-  { id, message: newDefault, origin, comment, ...props }
+  comment?: string
+}
+
+export type ExtractPluginOpts = {
+  onMessageExtracted(msg: ExtractedMessage): void
+}
+
+type RawMessage = {
+  id?: string
+  message?: string
+  comment?: string
+  context?: string
+}
+
+export type Origin = [filename: string, line: number, column?: number]
+
+function collectMessage(
+  path: NodePath<any>,
+  props: RawMessage,
+  ctx: PluginPass
 ) {
-  if (messages.has(id)) {
-    const message = messages.get(id)
+  // prevent from adding undefined msgid
+  if (props.id === undefined) return
 
-    // only set/check default language when it's defined.
-    if (message.message && newDefault && message.message !== newDefault) {
-      throw path.buildCodeFrameError(
-        "Different defaults for the same message ID."
+  const node: Node = path.node
+
+  const line = node.loc ? node.loc.start.line : null
+  const column = node.loc ? node.loc.start.column : null
+
+  ;(ctx.opts as ExtractPluginOpts).onMessageExtracted({
+    id: props.id,
+    message: props.message,
+    context: props.context,
+    comment: props.comment,
+    origin: [ctx.file.opts.filename, line, column],
+  })
+}
+
+function getTextFromExpression(
+  t: BabelTypes,
+  exp: Expression,
+  hub: Hub,
+  emitErrorOnVariable = true
+): string {
+  if (t.isStringLiteral(exp)) {
+    return exp.value
+  }
+
+  if (t.isBinaryExpression(exp)) {
+    return (
+      getTextFromExpression(
+        t,
+        exp.left as Expression,
+        hub,
+        emitErrorOnVariable
+      ) +
+      getTextFromExpression(
+        t,
+        exp.right as Expression,
+        hub,
+        emitErrorOnVariable
       )
-    } else {
-      if (newDefault) {
-        message.message = newDefault
-      }
+    )
+  }
 
-      ;[].push.apply(message.origin, origin)
-      if (comment) {
-        ;[].push.apply(message.extractedComments, [comment])
-      }
+  if (t.isTemplateLiteral(exp)) {
+    if (exp?.quasis.length > 1) {
+      console.warn(
+        hub.buildError(
+          exp,
+          "Could not extract from template literal with expressions.",
+          SyntaxError
+        ).message
+      )
+      return ""
     }
-  } else {
-    const extractedComments = comment ? [comment] : []
-    messages.set(id, { ...props, message: newDefault, origin, extractedComments })
+
+    return exp.quasis[0]?.value?.cooked
+  }
+
+  if (emitErrorOnVariable) {
+    console.warn(
+      hub.buildError(
+        exp,
+        "Only strings or template literals could be extracted.",
+        SyntaxError
+      ).message
+    )
   }
 }
 
-export default function ({ types: t }) {
-  let localTransComponentName
+function extractFromObjectExpression(
+  t: BabelTypes,
+  exp: ObjectExpression,
+  hub: Hub,
+  keys: readonly string[]
+) {
+  const props: Record<string, string> = {}
 
-  function isTransComponent(node) {
+  ;(exp.properties as ObjectProperty[]).forEach(({ key, value }, i) => {
+    const name = (key as Identifier).name
+
+    if (!keys.includes(name as any)) return
+    props[name] = getTextFromExpression(t, value as Expression, hub)
+  })
+
+  return props
+}
+
+const I18N_OBJECT = "i18n"
+
+function hasComment(node: Node, comment: string): boolean {
+  return (
+    node.leadingComments &&
+    node.leadingComments.some((comm) => comm.value.trim() === comment)
+  )
+}
+
+function hasIgnoreComment(node: Node): boolean {
+  return hasComment(node, "lingui-extract-ignore")
+}
+
+function hasI18nComment(node: Node): boolean {
+  return hasComment(node, "i18n")
+}
+
+export default function ({ types: t }: { types: BabelTypes }): PluginObj {
+  let localTransComponentName: string
+
+  function isTransComponent(node: Node) {
     return (
       t.isJSXElement(node) &&
       t.isJSXIdentifier(node.openingElement.name, {
@@ -55,22 +159,33 @@ export default function ({ types: t }) {
     )
   }
 
-  const isI18nMethod = (node) =>
+  const isI18nMethod = (node: Node) =>
     t.isMemberExpression(node) &&
-    t.isIdentifier(node.object, { name: "i18n" }) &&
-    t.isIdentifier(node.property, { name: "_" })
+    (t.isIdentifier(node.object, { name: I18N_OBJECT }) ||
+      (t.isMemberExpression(node.object) &&
+        t.isIdentifier(node.object.property, { name: I18N_OBJECT }))) &&
+    (t.isIdentifier(node.property, { name: "_" }) ||
+      t.isIdentifier(node.property, { name: "t" }))
 
-  function collectMessage(path, file, props) {
-    const messages = file.get(MESSAGES)
+  const extractFromMessageDescriptor = (
+    path: NodePath<ObjectExpression>,
+    ctx: PluginPass
+  ) => {
+    const props = extractFromObjectExpression(t, path.node, ctx.file.hub, [
+      "id",
+      "message",
+      "comment",
+      "context",
+    ])
 
-    const rootDir = file.get(CONFIG).rootDir
-    const filename = fsPath
-      .relative(rootDir, file.opts.filename)
-      .replace(/\\/g, "/")
-    const line = path.node.loc ? path.node.loc.start.line : null
-    props.origin = [[filename, line]]
+    if (!props.id) {
+      console.warn(
+        path.buildCodeFrameError("Missing message ID, skipping.").message
+      )
+      return
+    }
 
-    addMessage(path, messages, props)
+    collectMessage(path, props, ctx)
   }
 
   return {
@@ -82,43 +197,41 @@ export default function ({ types: t }) {
         const { node } = path
 
         const moduleName = node.source.value
-        if (
-          !["@lingui/react", "@lingui/macro", "@lingui/core"].includes(
-            moduleName
-          )
-        )
-          return
+        if (!["@lingui/react", "@lingui/core"].includes(moduleName)) return
 
-        const importDeclarations = {}
-        if (moduleName === "@lingui/react" || moduleName === "@lingui/macro") {
+        const importDeclarations: Record<string, string> = {}
+        if (moduleName === "@lingui/react") {
           node.specifiers.forEach((specifier) => {
-            importDeclarations[specifier.imported.name] = specifier.local.name
+            specifier = specifier as ImportSpecifier
+            importDeclarations[(specifier.imported as Identifier).name] =
+              specifier.local.name
           })
 
           // Trans import might be missing if there's just Plural or similar macro.
           // If there's no alias, consider it was imported as Trans.
           localTransComponentName = importDeclarations["Trans"] || "Trans"
         }
-
-        if (!node.specifiers.length) {
-          path.remove()
-        }
       },
 
       // Extract translation from <Trans /> component.
-      JSXElement(path, { file }) {
+      JSXElement(path, ctx) {
         const { node } = path
         if (!localTransComponentName || !isTransComponent(node)) return
 
-        const attrs = node.openingElement.attributes || []
+        const attrs = (node.openingElement.attributes as JSXAttribute[]) || []
 
-        const props = attrs.reduce((acc, item) => {
+        const props = attrs.reduce<Record<string, unknown>>((acc, item) => {
           const key = item.name.name
-          if (key === "id" || key === "message" || key === "comment") {
-            if (item.value.value) {
+          if (
+            key === "id" ||
+            key === "message" ||
+            key === "comment" ||
+            key === "context"
+          ) {
+            if (t.isStringLiteral(item.value)) {
               acc[key] = item.value.value
             } else if (
-              item.value.expression &&
+              t.isJSXExpressionContainer(item.value) &&
               t.isStringLiteral(item.value.expression)
             ) {
               acc[key] = item.value.expression.value
@@ -130,172 +243,98 @@ export default function ({ types: t }) {
         if (!props.id) {
           // <Trans id={message} /> is valid, don't raise warning
           const idProp = attrs.filter((item) => item.name.name === "id")[0]
-          if (idProp === undefined || t.isLiteral(props.id)) {
-            console.warn("Missing message ID, skipping.")
-            console.warn(generate(node).code)
-          }
-          return
-        }
-
-        collectMessage(path, file, props)
-      },
-
-      CallExpression(path, { file }) {
-        const visited = file.get(VISITED)
-        if (visited.has(path.node)) return
-
-        const hasComment = [path.node, path.parent].find(
-          ({ leadingComments }) => {
-            return (
-              leadingComments &&
-              leadingComments.filter((node) =>
-                node.value.match(/^\s*i18n\s*$/)
-              )[0]
+          if (idProp === undefined || t.isLiteral(props.id as any)) {
+            console.warn(
+              path.buildCodeFrameError("Missing message ID, skipping.").message
             )
           }
-        )
-        if (!hasComment) return
-
-        const props = {
-          id: path.node.arguments[0].value,
-        }
-
-        if (!props.id) {
-          console.warn("Missing message ID, skipping.")
-          console.warn(generate(path.node).code)
           return
         }
 
-        const copyOptions = ["message", "comment"]
-
-        if (t.isObjectExpression(path.node.arguments[2])) {
-          path.node.arguments[2].properties.forEach((property) => {
-            if (!copyOptions.includes(property.key.name)) return
-
-            props[property.key.name] = property.value.value
-          })
-        }
-
-        visited.add(path.node)
-        collectMessage(path, file, props)
+        collectMessage(path, props, ctx)
       },
 
-      StringLiteral(path, { file }) {
-        const visited = file.get(VISITED)
-
-        const comment =
-          path.node.leadingComments &&
-          path.node.leadingComments.filter((node) =>
-            node.value.match(/^\s*i18n/)
-          )[0]
-
-        if (!comment || visited.has(path.node)) {
+      CallExpression(path, ctx) {
+        if ([path.node, path.parent].some((node) => hasIgnoreComment(node))) {
           return
         }
 
-        visited.add(path.node)
+        const firstArgument = path.get("arguments")[0]
+
+        // i18n._(...)
+        if (!isI18nMethod(path.node.callee)) {
+          return
+        }
+
+        // call with explicit annotation
+        // i18n._(/*i18n*/ {descriptor})
+        // skipping this as it is processed
+        // by ObjectExpression visitor
+        if (hasI18nComment(firstArgument.node)) {
+          return
+        }
+
+        if (firstArgument.isObjectExpression()) {
+          // i8n._({message, id, context})
+          extractFromMessageDescriptor(firstArgument, ctx)
+          return
+        } else {
+          // i18n._(id, variables, descriptor)
+          let props = {
+            id: getTextFromExpression(
+              t,
+              firstArgument.node as Expression,
+              ctx.file.hub,
+              false
+            ),
+          }
+
+          if (!props.id) {
+            return
+          }
+
+          const msgDescArg = path.node.arguments[2]
+
+          if (t.isObjectExpression(msgDescArg)) {
+            props = {
+              ...props,
+              ...extractFromObjectExpression(t, msgDescArg, ctx.file.hub, [
+                "message",
+                "comment",
+                "context",
+              ]),
+            }
+          }
+
+          collectMessage(path, props, ctx)
+        }
+      },
+
+      StringLiteral(path, ctx) {
+        if (!hasI18nComment(path.node)) {
+          return
+        }
 
         const props = {
           id: path.node.value,
         }
 
         if (!props.id) {
-          console.warn("Missing message ID, skipping.")
-          console.warn(generate(path.node).code)
+          console.warn(
+            path.buildCodeFrameError("Empty StringLiteral, skipping.").message
+          )
           return
         }
 
-        collectMessage(path, file, props)
+        collectMessage(path, props, ctx)
       },
 
       // Extract message descriptors
-      ObjectExpression(path, { file }) {
-        const visited = file.get(VISITED)
+      ObjectExpression(path, ctx) {
+        if (!hasI18nComment(path.node)) return
 
-        const comment =
-          path.node.leadingComments &&
-          path.node.leadingComments.filter((node) =>
-            node.value.match(/^\s*i18n/)
-          )[0]
-
-        if (!comment || visited.has(path.node)) {
-          return
-        }
-
-        visited.add(path.node)
-
-        const props = {}
-        const copyProps = ["id", "message", "comment"]
-        path.node.properties
-          .filter(({ key }) => copyProps.indexOf(key.name) !== -1)
-          .forEach(({ key, value }, i) => {
-            if (key.name === "comment" && !t.isStringLiteral(value)) {
-              throw path
-                .get(`properties.${i}.value`)
-                .buildCodeFrameError("Only strings are supported as comments.")
-            }
-
-            props[key.name] = value.value
-          })
-
-        collectMessage(path, file, props)
+        extractFromMessageDescriptor(path, ctx)
       },
-    },
-
-    pre(file) {
-      localTransComponentName = null
-
-      // Skip validation because config is loaded for each file.
-      // Config was already validated in CLI.
-      file.set(
-        CONFIG,
-        getConfig({ cwd: file.opts.filename, skipValidation: true })
-      )
-
-      // Ignore else path for now. Collision is possible if other plugin is
-      // using the same Symbol('I18nMessages').
-      // istanbul ignore else
-      if (!file.has(MESSAGES)) {
-        file.set(MESSAGES, new Map())
-      }
-
-      file.set(VISITED, new WeakSet())
-    },
-
-    post(file) {
-      /* Write catalog to directory `localeDir`/_build/`path.to.file`/`filename`.json
-       * e.g: if file is src/components/App.js (relative to package.json), then
-       * catalog will be in locale/_build/src/components/App.json
-       */
-      const config = file.get(CONFIG)
-      const localeDir = this.opts.localeDir || config.localeDir
-      const { filename } = file.opts
-      const rootDir = config.rootDir
-      const baseDir = fsPath.dirname(fsPath.relative(rootDir, filename))
-      const targetDir = fsPath.join(localeDir, "_build", baseDir)
-
-      const messages = file.get(MESSAGES)
-      const catalog = {}
-      const baseName = fsPath.basename(filename)
-      const catalogFilename = fsPath.join(targetDir, `${baseName}.json`)
-
-      mkdirp.sync(targetDir)
-
-      // no messages, skip file
-      if (!messages.size) {
-        // clean any existing catalog
-        if (fs.existsSync(catalogFilename)) {
-          fs.writeFileSync(catalogFilename, JSON.stringify({}))
-        }
-
-        return
-      }
-
-      messages.forEach((value, key) => {
-        catalog[key] = value
-      })
-
-      fs.writeFileSync(catalogFilename, JSON.stringify(catalog, null, 2))
     },
   }
 }

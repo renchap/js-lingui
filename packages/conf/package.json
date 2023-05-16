@@ -1,6 +1,7 @@
 {
   "name": "@lingui/conf",
-  "version": "3.2.3",
+  "version": "4.1.0",
+  "sideEffects": false,
   "description": "Get lingui configuration from package.json",
   "keywords": [
     "lingui",
@@ -13,20 +14,32 @@
     "name": "Tomáš Ehrlich",
     "email": "tomas.ehrlich@gmail.com"
   },
-  "main": "index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && unbuild",
+    "stub": "unbuild --stub"
   },
   "dependencies": {
-    "@babel/runtime": "^7.11.2",
+    "@babel/runtime": "^7.20.13",
     "chalk": "^4.1.0",
-    "cosmiconfig": "^7.0.0",
-    "jest-validate": "^26.5.2"
+    "cosmiconfig": "^8.0.0",
+    "jest-validate": "^29.4.3",
+    "jiti": "^1.17.1",
+    "lodash.get": "^4.4.2"
   },
   "files": [
     "LICENSE",
     "README.md",
-    "index.js",
-    "index.d.ts"
-  ]
+    "/dist"
+  ],
+  "devDependencies": {
+    "@lingui/jest-mocks": "*",
+    "tsd": "^0.26.1",
+    "unbuild": "^1.1.2"
+  }
 }

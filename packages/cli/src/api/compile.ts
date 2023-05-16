@@ -1,11 +1,12 @@
 import * as t from "@babel/types"
-import generate from "@babel/generator"
-import { parse } from "messageformat-parser"
-import * as R from "ramda"
-
+import generate, { GeneratorOptions } from "@babel/generator"
+import {
+  compileMessage,
+  CompiledMessage,
+} from "@lingui/message-utils/compileMessage"
 import pseudoLocalize from "./pseudoLocalize"
 
-type CompiledCatalogNamespace = "cjs" | "es" | string
+export type CompiledCatalogNamespace = "cjs" | "es" | "ts" | "json" | string
 
 type CompiledCatalogType = {
   [msgId: string]: string
@@ -15,40 +16,61 @@ export type CreateCompileCatalogOptions = {
   strict?: boolean
   namespace?: CompiledCatalogNamespace
   pseudoLocale?: string
+  compilerBabelOptions?: GeneratorOptions
 }
 
 export function createCompiledCatalog(
   locale: string,
   messages: CompiledCatalogType,
   options: CreateCompileCatalogOptions
-) {
-  const { strict = false, namespace = "cjs", pseudoLocale } = options
-  const compiledMessages = R.keys(messages).map((key: string) => {
+): string {
+  const {
+    strict = false,
+    namespace = "cjs",
+    pseudoLocale,
+    compilerBabelOptions = {},
+  } = options
+  const shouldPseudolocalize = locale === pseudoLocale
+
+  const compiledMessages = Object.keys(messages).reduce<{
+    [msgId: string]: CompiledMessage
+  }>((obj, key: string) => {
     // Don't use `key` as a fallback translation in strict mode.
-    let translation = messages[key] || (!strict ? key : "")
+    const translation = (messages[key] || (!strict ? key : "")) as string
 
-    if (locale === pseudoLocale) {
-      translation = pseudoLocalize(translation)
-    }
+    obj[key] = compile(translation, shouldPseudolocalize)
+    return obj
+  }, {})
 
-    return t.objectProperty(t.stringLiteral(key), compile(translation))
-  })
+  if (namespace === "json") {
+    return JSON.stringify({ messages: compiledMessages })
+  }
 
   const ast = buildExportStatement(
-    t.objectExpression(compiledMessages),
+    //build JSON.parse(<compiledMessages>) statement
+    t.callExpression(
+      t.memberExpression(t.identifier("JSON"), t.identifier("parse")),
+      [t.stringLiteral(JSON.stringify(compiledMessages))]
+    ),
     namespace
   )
 
-  return (
-    "/*eslint-disable*/" +
-    generate(ast as any, {
-      minified: true,
-    }).code
-  )
+  const code = generate(ast, {
+    minified: true,
+    jsescOption: {
+      minimal: true,
+    },
+    ...compilerBabelOptions,
+  }).code
+
+  return "/*eslint-disable*/" + code
 }
 
-function buildExportStatement(expression, namespace: CompiledCatalogNamespace) {
-  if (namespace === "es") {
+function buildExportStatement(
+  expression: t.Expression,
+  namespace: CompiledCatalogNamespace
+) {
+  if (namespace === "es" || namespace === "ts") {
     // export const messages = { message: "Translation" }
     return t.exportNamedDeclaration(
       t.variableDeclaration("const", [
@@ -90,86 +112,11 @@ function buildExportStatement(expression, namespace: CompiledCatalogNamespace) {
  * Compile string message into AST tree. Message format is parsed/compiled into
  * JS arrays, which are handled in client.
  */
-export function compile(message: string) {
-  let tokens
-  try {
-    tokens = parse(message)
-  } catch (e) {
-    throw new Error(
-      `Can't parse message. Please check correct syntax: "${message}"`
-    )
-  }
-  const ast = processTokens(tokens)
-
-  if (isString(ast)) return t.stringLiteral(ast)
-
-  return ast
-}
-
-function processTokens(tokens) {
-  // Shortcut - if the message doesn't include any formatting,
-  // simply join all string chunks into one message
-  if (!tokens.filter((token) => !isString(token)).length) {
-    return tokens.join("")
-  }
-
-  return t.arrayExpression(
-    tokens.map((token) => {
-      if (isString(token)) {
-        return t.stringLiteral(token)
-
-        // # in plural case
-      } else if (token.type === "octothorpe") {
-        return t.stringLiteral("#")
-
-        // simple argument
-      } else if (token.type === "argument") {
-        return t.arrayExpression([t.stringLiteral(token.arg)])
-
-        // argument with custom format (date, number)
-      } else if (token.type === "function") {
-        const params = [t.stringLiteral(token.arg), t.stringLiteral(token.key)]
-
-        const format = token.param && token.param.tokens[0]
-        if (format) {
-          params.push(t.stringLiteral(format.trim()))
-        }
-        return t.arrayExpression(params)
-      }
-
-      // complex argument with cases
-      const formatProps = []
-
-      if (token.offset) {
-        formatProps.push(
-          t.objectProperty(
-            t.identifier("offset"),
-            t.numericLiteral(parseInt(token.offset))
-          )
-        )
-      }
-
-      token.cases.forEach((item) => {
-        const inlineTokens = processTokens(item.tokens)
-        formatProps.push(
-          t.objectProperty(
-            t.identifier(item.key),
-            isString(inlineTokens)
-              ? t.stringLiteral(inlineTokens)
-              : inlineTokens
-          )
-        )
-      })
-
-      const params = [
-        t.stringLiteral(token.arg),
-        t.stringLiteral(token.type),
-        t.objectExpression(formatProps),
-      ]
-
-      return t.arrayExpression(params)
-    })
+export function compile(
+  message: string,
+  shouldPseudolocalize: boolean = false
+) {
+  return compileMessage(message, (value) =>
+    shouldPseudolocalize ? pseudoLocalize(value) : value
   )
 }
-
-const isString = (s) => typeof s === "string"

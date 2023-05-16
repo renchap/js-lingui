@@ -1,5 +1,8 @@
-import getFormat from "./formats"
-import { getCatalogs, getCatalogForFile } from "./catalog"
+export { getFormat } from "./formats"
+export { getCatalogForFile, getCatalogs } from "./catalog/getCatalogs"
 
 export { createCompiledCatalog } from "./compile"
-export { getFormat, getCatalogs, getCatalogForFile }
+
+export { default as extractor } from "./extractors/babel"
+export { getCatalogDependentFiles } from "./catalog/getCatalogDependentFiles"
+export * from "./types"

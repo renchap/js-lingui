@@ -1,4 +1,6 @@
-export default [
+import { TestCase } from "./index"
+
+const cases: TestCase[] = [
   {
     name: "Macro is used in expression assignment",
     input: `
@@ -10,11 +12,41 @@ export default [
       `,
     expected: `
         import { i18n } from "@lingui/core";
-        const a = 
+       const a = i18n._(
           /*i18n*/
-          i18n._("{count, plural, one {# book} other {# books}}", {
-            count: count
-          });
+          {
+            id: "esnaQO",
+            message: "{count, plural, one {# book} other {# books}}",
+            values: {
+              count: count,
+            },
+          }
+        );
+
+      `,
+  },
+  {
+    name: "plural macro could be renamed",
+    input: `
+        import { plural as plural2 } from '@lingui/macro'
+        const a = plural2(count, {
+          "one": \`# book\`,
+          other: "# books"
+        });
+      `,
+    expected: `
+        import { i18n } from "@lingui/core";
+       const a = i18n._(
+          /*i18n*/
+          {
+            id: "esnaQO",
+            message: "{count, plural, one {# book} other {# books}}",
+            values: {
+              count: count,
+            },
+          }
+        );
+
       `,
   },
   {
@@ -30,10 +62,43 @@ export default [
       `,
     expected: `
         import { i18n } from "@lingui/core";
-        /*i18n*/
-        i18n._("{0, plural, offset:1 =0 {No books} =1 {1 book} other {# books}}", {
-          0: users.length
+        i18n._(
+          /*i18n*/
+          {
+            id: "CF5t+7",
+            message: "{0, plural, offset:1 =0 {No books} =1 {1 book} other {# books}}",
+            values: {
+              0: users.length,
+            },
+          }
+        );
+      `,
+  },
+  {
+    name: "Macro with expression only choice",
+    input: `
+        import { plural } from '@lingui/macro'
+        plural(users.length, {
+          offset: 1,
+          0: "No books",
+          1: "1 book",
+          other: someOtherExp
         });
+      `,
+    expected: `
+        import { i18n } from "@lingui/core";
+        i18n._(
+          /*i18n*/
+          {
+            id: "0mcXIe",
+            message: "{0, plural, offset:1 =0 {No books} =1 {1 book} other {{someOtherExp}}}",
+            values: {
+              0: users.length,
+              someOtherExp: someOtherExp,
+            },
+          }
+        );
       `,
   },
 ]
+export default cases

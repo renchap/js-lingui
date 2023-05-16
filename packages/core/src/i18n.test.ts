@@ -1,7 +1,7 @@
-import { setupI18n } from "@lingui/core"
+import { setupI18n } from "./i18n"
 import { mockConsole, mockEnv } from "@lingui/jest-mocks"
 
-describe("I18n", function () {
+describe("I18n", () => {
   describe("I18n.load", () => {
     it("should emit event", () => {
       const i18n = setupI18n()
@@ -15,11 +15,6 @@ describe("I18n", function () {
     it("should load catalog and merge with existing", () => {
       const messages = {
         Hello: "Hello",
-      }
-
-      const localeData = {
-        plurals: jest.fn(),
-        code: "en_US",
       }
 
       const i18n = setupI18n()
@@ -61,15 +56,30 @@ describe("I18n", function () {
         messages: {
           en: {},
         },
-        localeData: {
-          en: {},
-        },
       })
 
       const cbChange = jest.fn()
       i18n.on("change", cbChange)
       i18n.activate("en")
       expect(cbChange).toBeCalled()
+    })
+
+    it("should activate instantly", () => {
+      const i18n = setupI18n({
+        messages: {
+          en: {
+            Hello: "Hello",
+          },
+          es: {
+            Hello: "Hola",
+          },
+        },
+      })
+
+      i18n.activate("en")
+      expect(i18n._("Hello")).toEqual("Hello")
+      i18n.activate("es")
+      expect(i18n._("Hello")).toEqual("Hola")
     })
 
     it("should switch active locale", () => {
@@ -101,9 +111,6 @@ describe("I18n", function () {
         expect(console.warn).toBeCalledWith(
           'Messages for locale "xyz" not loaded.'
         )
-        expect(console.warn).toBeCalledWith(
-          'Locale data for locale "xyz" not loaded. Plurals won\'t work correctly.'
-        )
       })
 
       mockEnv("production", () => {
@@ -118,7 +125,61 @@ describe("I18n", function () {
     })
   })
 
-  it("._ should format message from catalog", function () {
+  describe("I18n.loadAndActivate", () => {
+    it("should set locale and messages", () => {
+      const i18n = setupI18n()
+
+      const cbChange = jest.fn()
+      i18n.on("change", cbChange)
+
+      i18n.loadAndActivate({
+        locale: "en",
+        messages: { message: "My Message" },
+      })
+
+      expect(i18n.locale).toEqual("en")
+      expect(i18n.locales).toBeUndefined()
+
+      expect(cbChange).toBeCalled()
+    })
+
+    it("should support locales as array", () => {
+      const i18n = setupI18n()
+
+      i18n.loadAndActivate({
+        locale: "ar",
+        locales: ["en-UK", "ar-AS"],
+        messages: { message: "My Message" },
+      })
+
+      expect(i18n.locale).toEqual("ar")
+      expect(i18n.locales).toEqual(["en-UK", "ar-AS"])
+    })
+
+    it("should override existing data", () => {
+      const i18n = setupI18n({
+        locale: "en",
+        locales: ["en-GB", "en"],
+        messages: {
+          en: {
+            message: "My Message",
+          },
+        },
+      })
+
+      i18n.loadAndActivate({
+        locale: "ru",
+        messages: {
+          message: "My Message",
+        },
+      })
+
+      expect(i18n.locale).toEqual("ru")
+      expect(i18n.locales).toBeUndefined()
+    })
+  })
+
+  it("._ should format message from catalog", () => {
     const messages = {
       Hello: "Salut",
       "My name is {name}": "Je m'appelle {name}",
@@ -133,6 +194,9 @@ describe("I18n", function () {
     expect(i18n._("My name is {name}", { name: "Fred" })).toEqual(
       "Je m'appelle Fred"
     )
+
+    // alias
+    expect(i18n.t("Hello")).toEqual("Salut")
 
     // missing { name }
     expect(i18n._("My name is {name}")).toEqual("Je m'appelle")
@@ -151,7 +215,7 @@ describe("I18n", function () {
     ).toEqual("Missing Fred")
   })
 
-  it("._ should translate message from variable", function () {
+  it("._ should translate message from variable", () => {
     const messages = {
       Hello: "Salut",
     }
@@ -177,7 +241,7 @@ describe("I18n", function () {
     expect(i18n._("My ''name'' is '{name}'")).toEqual("Mi 'nombre' es {name}")
   })
 
-  it("._ shouldn't compile messages in production", function () {
+  it("._ shouldn't compile messages in production", () => {
     const messages = {
       Hello: "Salut",
       "My name is {name}": "Je m'appelle {name}",
@@ -196,8 +260,28 @@ describe("I18n", function () {
     })
   })
 
-  describe("params.missing - handling missing translations", function () {
-    it("._ should return custom string for missing translations", function () {
+  it("._ should emit missing event for missing translation", () => {
+    const i18n = setupI18n({
+      locale: "en",
+      messages: { en: { exists: "exists" } },
+    })
+
+    const handler = jest.fn()
+    i18n.on("missing", handler)
+    i18n._("exists")
+    expect(handler).toHaveBeenCalledTimes(0)
+    i18n._("missing")
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith({
+      id: "missing",
+      locale: "en",
+    })
+    i18n.t("missing")
+    expect(handler).toHaveBeenCalledTimes(2)
+  })
+
+  describe("params.missing - handling missing translations", () => {
+    it("._ should return custom string for missing translations", () => {
       const i18n = setupI18n({
         missing: "xxx",
         locale: "en",
@@ -207,10 +291,13 @@ describe("I18n", function () {
       expect(i18n._("missing")).toEqual("xxx")
     })
 
-    it("._ should call a function with message ID of missing translation", function () {
+    it("._ should call a function with message ID of missing translation", () => {
       const missing = jest.fn((locale, id) => id.split("").reverse().join(""))
       const i18n = setupI18n({
         locale: "en",
+        messages: {
+          en: {},
+        },
         missing,
       })
       expect(i18n._("missing")).toEqual("gnissim")

@@ -20,31 +20,86 @@ describe("PseudoLocalization", () => {
     )
   })
 
-  it("should pseudlocalize plurals with HTML tags", () => {
+  describe("Plurals", () => {
+    it("with value", () => {
+      expect(
+        pseudoLocalize("{value, plural, one {# book} other {# books}}")
+      ).toEqual("{value, plural, one {# ƀōōķ} other {# ƀōōķś}}")
+    })
+
+    it("with variable placeholder", () => {
+      expect(
+        pseudoLocalize(
+          "{count, plural, one {{countString} book} other {{countString} books}}"
+        )
+      ).toEqual(
+        "{count, plural, one {{countString} ƀōōķ} other {{countString} ƀōōķś}}"
+      )
+    })
+
+    it("with offset", () => {
+      expect(
+        pseudoLocalize(
+          "{count, plural, offset:1 zero {There are no messages} other {There are # messages in your inbox}}"
+        )
+      ).toEqual(
+        "{count, plural, offset:1 zero {Ţĥēŕē àŕē ńō mēśśàĝēś} other {Ţĥēŕē àŕē # mēśśàĝēś ĩń ŷōũŕ ĩńƀōx}}"
+      )
+    })
+
+    it("with HTML tags", () => {
+      expect(
+        pseudoLocalize(
+          "{count, plural, zero {There's # <span>message</span>} other {There are # messages}}"
+        )
+      ).toEqual(
+        "{count, plural, zero {Ţĥēŕē'ś # <span>mēśśàĝē</span>} other {Ţĥēŕē àŕē # mēśśàĝēś}}"
+      )
+    })
+
+    it("with exact number", () => {
+      expect(
+        pseudoLocalize(
+          "{count, plural, =0 {There's # <span>message</span>} other {There are # messages}}"
+        )
+      ).toEqual(
+        "{count, plural, =0 {Ţĥēŕē'ś # <span>mēśśàĝē</span>} other {Ţĥēŕē àŕē # mēśśàĝēś}}"
+      )
+    })
+  })
+
+  it("SelectOrdinal", () => {
     expect(
       pseudoLocalize(
-        "{messagesCount, plural, zero {There's # <span>message</span>} other {There're # messages}"
+        "{count, selectordinal, offset:1 one {#st} two {#nd} few {#rd} =4 {4th} many {testMany} other {#th}}"
       )
     ).toEqual(
-      "{messagesCount, plural, zero {Ţĥēŕē'ś # <span>mēśśàĝē</span>} other {Ţĥēŕē'ŕē # mēśśàĝēś}"
+      "{count, selectordinal, offset:1 one {#śţ} two {#ńď} few {#ŕď} =4 {4ţĥ} many {ţēśţMàńŷ} other {#ţĥ}}"
     )
   })
 
-  it("should pseudolocalize plurals", () => {
-    expect(
-      pseudoLocalize("{value, plural, one {# book} other {# books}}")
-    ).toEqual("{value, plural, one {# ƀōōķ} other {# ƀōōķś}}")
+  it("Select", () => {
     expect(
       pseudoLocalize(
-        "{count, plural, one {{countString} book} other {{countString} books}}"
+        "{gender, select, male {He} female {She} other {<span>Other</span>}}"
       )
     ).toEqual(
-      "{count, plural, one {{countString} ƀōōķ} other {{countString} ƀōōķś}}"
+      "{gender, select, male {Ĥē} female {Śĥē} other {<span>Ōţĥēŕ</span>}}"
     )
   })
 
-  it("shouldn't pseudolocalize variables", () => {
+  it("should not pseudolocalize variables", () => {
     expect(pseudoLocalize("replace {count}")).toEqual("ŕēƥĺàćē {count}")
     expect(pseudoLocalize("replace { count }")).toEqual("ŕēƥĺàćē { count }")
+  })
+
+  it("multiple plurals pseudolocalize gives wrong ICU message", () => {
+    expect(
+      pseudoLocalize(
+        "{bcount, plural, one {boy} other {# boys}} {gcount, plural, one {girl} other {# girls}}"
+      )
+    ).not.toEqual(
+      "{bcount, plural, one {ƀōŷ} other {# ƀōŷś}} {gcount, plural, one {ĝĩŕĺ} other {# ĝĩŕĺś}}"
+    )
   })
 })

@@ -1,19 +1,120 @@
-import { parseExpression as _parseExpression } from "@babel/parser"
 import * as types from "@babel/types"
-import MacroJSX from "./macroJsx"
+import MacroJSX, { normalizeWhitespace } from "./macroJsx"
+import { transformSync } from "@babel/core"
+import type { NodePath } from "@babel/traverse"
+import type { JSXElement } from "@babel/types"
 
-const parseExpression = (expression) =>
-  _parseExpression(expression, {
-    plugins: ["jsx"],
+const parseExpression = (expression: string) => {
+  let path: NodePath<JSXElement>
+
+  transformSync(expression, {
+    filename: "unit-test.js",
+    plugins: [
+      {
+        visitor: {
+          JSXElement: (d) => {
+            path = d
+            d.stop()
+          },
+        },
+      },
+    ],
   })
 
-function createMacro() {
-  return new MacroJSX({ types })
+  return path
 }
 
-describe("jsx macro", function () {
-  describe("tokenizeTrans", function () {
-    it("simple message without arguments", function () {
+function createMacro() {
+  return new MacroJSX(
+    { types },
+    { stripNonEssentialProps: false, nameMap: new Map() }
+  )
+}
+
+describe("jsx macro", () => {
+  describe("normalizeWhitespace", () => {
+    it("should remove whitespace before/after expression", () => {
+      const actual = normalizeWhitespace(
+        `You have
+
+          {count, plural, one {Message} other {Messages}}`
+      )
+
+      expect(actual).toBe(
+        `You have{count, plural, one {Message} other {Messages}}`
+      )
+    })
+
+    it("should remove whitespace before/after tag", () => {
+      const actual = normalizeWhitespace(
+        `    Hello <strong>World!</strong><br />
+    <p>
+     My name is <a href="/about">{{" "}}
+      <em>{{name}}</em></a>
+    </p>`
+      )
+
+      expect(actual).toBe(
+        `Hello <strong>World!</strong><br /><p>My name is <a href="/about">{{" "}}<em>{{name}}</em></a></p>`
+      )
+    })
+
+    it("should remove whitespace before/after tag", () => {
+      const actual = normalizeWhitespace(
+        `Property {0},
+          function {1},
+          array {2},
+          constant {3},
+          object {4},
+          everything {5}`
+      )
+
+      expect(actual).toBe(
+        `Property {0}, function {1}, array {2}, constant {3}, object {4}, everything {5}`
+      )
+    })
+
+    it("should remove trailing whitespaces in icu expressions", () => {
+      const actual = normalizeWhitespace(
+        `{count, plural, one {
+
+              <0>#</0> slot added
+
+            } other {
+
+              <1>#</1> slots added
+
+            }}
+`
+      )
+
+      expect(actual).toBe(
+        `{count, plural, one {<0>#</0> slot added} other {<1>#</1> slots added}}`
+      )
+    })
+
+    it("should remove leading whitespaces in icu expressions", () => {
+      const actual = normalizeWhitespace(
+        `{count, plural, one {
+
+              One hello
+
+            } other {
+
+              Other hello
+
+            }}
+`
+      )
+
+      expect(actual).toBe(
+        `{count, plural, one {One hello} other {Other hello}}`
+      )
+    })
+  })
+
+  describe("tokenizeTrans", () => {
+    it("simple message without arguments", () => {
       const macro = createMacro()
       const exp = parseExpression("<Trans>Message</Trans>")
       const tokens = macro.tokenizeTrans(exp)
@@ -25,7 +126,7 @@ describe("jsx macro", function () {
       ])
     })
 
-    it("message with named argument", function () {
+    it("message with named argument", () => {
       const macro = createMacro()
       const exp = parseExpression("<Trans>Message {name}</Trans>")
       const tokens = macro.tokenizeTrans(exp)
@@ -45,7 +146,7 @@ describe("jsx macro", function () {
       ])
     })
 
-    it("message with positional argument", function () {
+    it("message with positional argument", () => {
       const macro = createMacro()
       const exp = parseExpression("<Trans>Message {obj.name}</Trans>")
       const tokens = macro.tokenizeTrans(exp)
@@ -56,7 +157,7 @@ describe("jsx macro", function () {
         },
         {
           type: "arg",
-          name: 0,
+          name: "0",
           value: expect.objectContaining({
             type: "MemberExpression",
           }),
@@ -64,7 +165,7 @@ describe("jsx macro", function () {
       ])
     })
 
-    it("message with plural", function () {
+    it("message with plural", () => {
       const macro = createMacro()
       const exp = parseExpression(
         "<Trans>Message <Plural value={count} /></Trans>"
@@ -88,8 +189,8 @@ describe("jsx macro", function () {
     })
   })
 
-  describe("tokenizeChoiceComponent", function () {
-    it("plural", function () {
+  describe("tokenizeChoiceComponent", () => {
+    it("plural", () => {
       const macro = createMacro()
       const exp = parseExpression(
         "<Plural value={count} one='# book' other='# books' />"
@@ -110,7 +211,7 @@ describe("jsx macro", function () {
       })
     })
 
-    it("plural with offset", function () {
+    it("plural with offset", () => {
       const macro = createMacro()
       const exp = parseExpression(
         `<Plural
@@ -139,7 +240,35 @@ describe("jsx macro", function () {
       })
     })
 
-    it("plural with template literal", function () {
+    it("plural with key should be omitted", () => {
+      const macro = createMacro()
+      const exp = parseExpression(
+        `<Plural
+          key='somePLural'
+          value={count}
+          _0='No books'
+          one='# book'
+          other='# books'
+         />`
+      )
+      const tokens = macro.tokenizeChoiceComponent(exp)
+      expect(tokens).toEqual({
+        type: "arg",
+        name: "count",
+        value: expect.objectContaining({
+          name: "count",
+          type: "Identifier",
+        }),
+        format: "plural",
+        options: {
+          "=0": "No books",
+          one: "# book",
+          other: "# books",
+        },
+      })
+    })
+
+    it("plural with template literal", () => {
       const macro = createMacro()
       const exp = parseExpression(
         "<Plural value={count} one={`# glass of ${drink}`} other={`# glasses of ${drink}`} />"
@@ -186,11 +315,11 @@ describe("jsx macro", function () {
       })
     })
 
-    it("plural with select", function () {
+    it("plural with select", () => {
       const macro = createMacro()
       const exp = parseExpression(
         `<Plural
-          value={count} 
+          value={count}
           one={
             <Select
               value={gender}
@@ -211,20 +340,63 @@ describe("jsx macro", function () {
         }),
         format: "plural",
         options: {
-          one: {
-            type: "arg",
-            name: "gender",
-            value: expect.objectContaining({
+          one: [
+            {
+              type: "arg",
               name: "gender",
-              type: "Identifier",
-            }),
-            format: "select",
-            options: {
-              male: "he",
-              female: "she",
-              other: "they",
+              value: expect.objectContaining({
+                name: "gender",
+                type: "Identifier",
+              }),
+              format: "select",
+              options: {
+                male: "he",
+                female: "she",
+                other: "they",
+              },
+            },
+          ],
+        },
+      })
+    })
+
+    it("Select", () => {
+      const macro = createMacro()
+      const exp = parseExpression(
+        `<Select
+          value={gender}
+          male="he"
+          one="heone"
+          female="she"
+          other="they"
+        />`
+      )
+      const tokens = macro.tokenizeNode(exp)
+      expect(tokens[0]).toMatchObject({
+        format: "select",
+        name: "gender",
+        options: {
+          female: "she",
+          male: "he",
+          offset: undefined,
+          other: "they",
+        },
+        type: "arg",
+        value: {
+          end: 31,
+          loc: {
+            end: {
+              column: 23,
+              line: 2,
+            },
+            identifierName: "gender",
+            start: {
+              column: 17,
+              line: 2,
             },
           },
+          name: "gender",
+          type: "Identifier",
         },
       })
     })

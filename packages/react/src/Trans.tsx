@@ -4,21 +4,31 @@ import { useLingui } from "./I18nProvider"
 import { formatElements } from "./format"
 
 export type TransRenderProps = {
-  id?: string
-  translation?: React.ReactNode
-  children?: string | any[] | React.ReactNode
+  id: string
+  translation: React.ReactNode
+  children: React.ReactNode
   message?: string | null
+  isTranslated: boolean
 }
+
+export type TransRenderCallbackOrComponent =
+  | {
+      component?: undefined
+      render?: (props: TransRenderProps) => React.ReactElement<any, any> | null
+    }
+  | {
+      component?: React.ComponentType<TransRenderProps> | null
+      render?: undefined
+    }
 
 export type TransProps = {
   id: string
   message?: string
-  values: Object
-  components: { [key: string]: React.ElementType | any }
-  formats?: Object
-  component?: React.ComponentType<TransRenderProps>
-  render?: (props: TransRenderProps) => React.ReactElement<any, any> | null
-}
+  values?: Record<string, unknown>
+  components?: { [key: string]: React.ElementType | any }
+  formats?: Record<string, unknown>
+  children?: React.ReactNode
+} & TransRenderCallbackOrComponent
 
 export function Trans(props: TransProps): React.ReactElement<any, any> | null {
   const { i18n, defaultComponent } = useLingui()
@@ -43,7 +53,10 @@ export function Trans(props: TransProps): React.ReactElement<any, any> | null {
 
     Object.keys(values).forEach((key) => {
       const value = values[key]
-      if (!React.isValidElement(value)) return
+      const valueIsReactEl =
+        React.isValidElement(value) ||
+        (Array.isArray(value) && value.every((el) => React.isValidElement(el)))
+      if (!valueIsReactEl) return
 
       const index = Object.keys(components).length
 
@@ -64,11 +77,19 @@ export function Trans(props: TransProps): React.ReactElement<any, any> | null {
   if (render === null || component === null) {
     // Although `string` is a valid react element, types only allow `Element`
     // Upstream issue: https://github.com/DefinitelyTyped/DefinitelyTyped/issues/20544
-    return (translation as unknown) as React.ReactElement<any, any>
+    return translation as unknown as React.ReactElement<any, any>
   }
 
-  const FallbackComponent = (defaultComponent ||
-    React.Fragment) as React.ComponentType<any>
+  const FallbackComponent: React.ComponentType<TransRenderProps> =
+    defaultComponent || RenderFragment
+
+  const i18nProps: TransRenderProps = {
+    id,
+    message,
+    translation,
+    isTranslated: id !== translation && message !== translation,
+    children: translation, // for type-compatibility with `component` prop
+  }
 
   // Validation of `render` and `component` props
   if (render && component) {
@@ -85,25 +106,23 @@ export function Trans(props: TransProps): React.ReactElement<any, any> | null {
     console.error(
       `Invalid value supplied to prop \`component\`. It must be a React component, provided ${component}`
     )
-    return <FallbackComponent>{translation}</FallbackComponent>
+    return React.createElement(FallbackComponent, i18nProps, translation)
   }
 
   // Rendering using a render prop
   if (typeof render === "function") {
     // Component: render={(props) => <a title={props.translation}>x</a>}
-    return render({
-      id,
-      translation,
-      message,
-    })
+    return render(i18nProps)
   }
 
   // `component` prop has a higher precedence over `defaultComponent`
-  const Component = (component || FallbackComponent) as React.ComponentType<any>
-  return <Component>{translation}</Component>
+  const Component: React.ComponentType<TransRenderProps> =
+    component || FallbackComponent
+
+  return React.createElement(Component, i18nProps, translation)
 }
 
-Trans.defaultProps = {
-  values: {},
-  components: {},
+const RenderFragment = ({ children }: TransRenderProps) => {
+  // cannot use React.Fragment directly because we're passing in props that it doesn't support
+  return <React.Fragment>{children}</React.Fragment>
 }

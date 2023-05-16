@@ -1,52 +1,49 @@
-import ora from "ora"
+import fs from "fs/promises"
 import babel from "./babel"
-import typescript from "./typescript"
-import * as R from "ramda"
+import {
+  ExtractedMessage,
+  ExtractorType,
+  LinguiConfigNormalized,
+} from "@lingui/conf"
 
-const extractors = { babel, typescript }
+const DEFAULT_EXTRACTORS: ExtractorType[] = [babel]
 
-
-export type BabelOptions = {
-  plugins?: Array<string>
-  presets?: Array<string>
+type ExtractOptions = {
+  extractors?: ExtractorType[]
 }
 
-export type ExtractOptions = {
-  verbose?: boolean
-  projectType?: string
-  babelOptions?: BabelOptions
-}
-
-export type ExtractorType = {
-  match(filename: string): boolean
-  extract(filename: string, targetDir: string, options?: ExtractOptions): void
-}
-
-export default function extract(
+export default async function extract(
   filename: string,
-  targetPath: string,
+  onMessageExtracted: (msg: ExtractedMessage) => void,
+  linguiConfig: LinguiConfigNormalized,
   options: ExtractOptions
-): boolean {
-  return R.values(extractors).some((ext: ExtractorType) => {
-    if (!ext.match(filename)) return false
+): Promise<boolean> {
+  const extractorsToExtract = options.extractors ?? DEFAULT_EXTRACTORS
 
-    let spinner
-    if (options.verbose) spinner = ora().start(filename)
-
-    try {
-      ext.extract(filename, targetPath, options)
-    } catch (e) {
-      if (options.verbose && spinner) {
-        spinner.fail(e.message)
-      } else {
-        console.error(`Cannot process file ${e.message}`)
-      }
-      return true
+  for (let e of extractorsToExtract) {
+    let ext: ExtractorType = e
+    if (typeof e === "string") {
+      // in case of the user using require.resolve in their extractors, we require that module
+      ext = require(e)
+    }
+    if ((ext as any).default) {
+      ext = (ext as any).default
     }
 
-    if (options.verbose && spinner) spinner.succeed()
-    return true
-  })
-}
+    if (!ext.match(filename)) continue
 
-export { babel, typescript }
+    try {
+      const file = await fs.readFile(filename)
+      await ext.extract(filename, file.toString(), onMessageExtracted, {
+        linguiConfig,
+      })
+      return true
+    } catch (e) {
+      console.error(`Cannot process file ${filename} ${(e as Error).message}`)
+      console.error((e as Error).stack)
+      return false
+    }
+  }
+
+  return true
+}

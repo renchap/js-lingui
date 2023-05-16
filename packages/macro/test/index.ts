@@ -1,10 +1,36 @@
 import fs from "fs"
 import path from "path"
-import { transformFileSync, TransformOptions, transformSync } from "@babel/core"
+import {
+  PluginObj,
+  transformFileSync,
+  TransformOptions,
+  transformSync,
+} from "@babel/core"
 import prettier from "prettier"
+import { LinguiMacroOpts } from "../src/index"
+import {
+  JSXAttribute,
+  jsxExpressionContainer,
+  JSXIdentifier,
+  stringLiteral,
+} from "@babel/types"
+import { NodePath } from "@babel/traverse"
 
-const testCases = {
-  "js-arg": require("./js-arg").default,
+export type TestCase = {
+  name?: string
+  input?: string
+  expected?: string
+  filename?: string
+  production?: boolean
+  useTypescriptPreset?: boolean
+  macroOpts?: LinguiMacroOpts
+  /** Remove hash id from snapshot for more stable testing */
+  stripId?: boolean
+  only?: boolean
+  skip?: boolean
+}
+
+const testCases: Record<string, TestCase[]> = {
   "js-t": require("./js-t").default,
   "js-plural": require("./js-plural").default,
   "js-select": require("./js-select").default,
@@ -16,20 +42,64 @@ const testCases = {
   "js-defineMessage": require("./js-defineMessage").default,
 }
 
+function stripIdPlugin(): PluginObj {
+  return {
+    visitor: {
+      JSXOpeningElement: (path) => {
+        const idAttr = path
+          .get("attributes")
+          .find(
+            (attr) =>
+              attr.isJSXAttribute() &&
+              (attr.node.name as JSXIdentifier).name === "id"
+          ) as NodePath<JSXAttribute>
+
+        if (idAttr) {
+          idAttr
+            .get("value")
+            .replaceWith(jsxExpressionContainer(stringLiteral("<stripped>")))
+        }
+      },
+    },
+  }
+}
+
 describe("macro", function () {
-  const babelOptions: TransformOptions = {
-    filename: "<filename>",
-    configFile: false,
-    presets: [],
-    plugins: ["@babel/plugin-syntax-jsx", "macros"],
+  process.env.LINGUI_CONFIG = path.join(__dirname, "lingui.config.js")
+
+  const getDefaultBabelOptions = (
+    macroOpts: LinguiMacroOpts = {},
+    isTs: boolean = false,
+    stripId = false
+  ): TransformOptions => {
+    return {
+      filename: "<filename>" + (isTs ? ".tsx" : "jsx"),
+      configFile: false,
+      presets: [],
+      plugins: [
+        "@babel/plugin-syntax-jsx",
+        [
+          "macros",
+          {
+            lingui: macroOpts,
+            // macro plugin uses package `resolve` to find a path of macro file
+            // this will not follow jest pathMapping and will resolve path from ./build
+            // instead of ./src which makes testing & developing hard.
+            // here we override resolve and provide correct path for testing
+            resolvePath: (source: string) => require.resolve(source),
+          },
+        ],
+        ...(stripId ? [stripIdPlugin] : []),
+      ],
+    }
   }
 
   // return function, so we can test exceptions
-  const transformCode = (code) => () => {
+  const transformCode = (code: string) => () => {
     try {
-      return transformSync(code, babelOptions).code.trim()
+      return transformSync(code, getDefaultBabelOptions()).code.trim()
     } catch (e) {
-      e.message = e.message.replace(/([^:]*:){2}/, "")
+      ;(e as Error).message = (e as Error).message.replace(/([^:]*:){2}/, "")
       throw e
     }
   }
@@ -38,18 +108,34 @@ describe("macro", function () {
     describe(suiteName, () => {
       const cases = testCases[suiteName]
 
-      const clean = (value) =>
-        prettier.format(value, { parser: "babel" }).replace(/\n+/, "\n")
+      const clean = (value: string) =>
+        prettier.format(value, { parser: "babel-ts" }).replace(/\n+/, "\n")
 
       cases.forEach(
         (
-          { name, input, expected, filename, production, useTypescriptPreset, only, skip },
+          {
+            name,
+            input,
+            expected,
+            filename,
+            production,
+            useTypescriptPreset,
+            only,
+            skip,
+            macroOpts,
+            stripId,
+          },
           index
         ) => {
           let run = it
           if (only) run = it.only
           if (skip) run = it.skip
           run(name != null ? name : `${suiteName} #${index + 1}`, () => {
+            const babelOptions = getDefaultBabelOptions(
+              macroOpts,
+              useTypescriptPreset,
+              stripId
+            )
             expect(input || filename).toBeDefined()
 
             const originalEnv = process.env.NODE_ENV
@@ -61,8 +147,6 @@ describe("macro", function () {
             if (useTypescriptPreset) {
               babelOptions.presets.push("@babel/preset-typescript")
             }
-
-            process.env.LINGUI_CONFIG = path.join(__dirname, "lingui.config.js")
 
             try {
               if (filename) {
@@ -84,7 +168,7 @@ describe("macro", function () {
                 const actual = transformFileSync(inputPath, _babelOptions)
                   .code.replace(/\r/g, "")
                   .trim()
-                expect(actual).toEqual(expected)
+                expect(clean(actual)).toEqual(clean(expected))
               } else {
                 const actual = transformSync(input, babelOptions).code.trim()
 
@@ -98,6 +182,13 @@ describe("macro", function () {
         }
       )
     })
+  })
+
+  it("Should throw error if used without babel-macro-plugin", async () => {
+    await expect(async () => {
+      const mod = await import("../src/index")
+      return (mod as unknown as typeof import("@lingui/macro")).Trans
+    }).rejects.toThrow('The macro you imported from "@lingui/macro"')
   })
 
   describe.skip("validation", function () {

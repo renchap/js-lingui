@@ -1,8 +1,6 @@
 {
-  "version": "3.2.3",
-  "packages": [
-    "packages/*"
-  ],
+  "version": "4.1.0",
+  "packages": ["packages/*"],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "command": {
@@ -13,22 +11,21 @@
         "**/examples/*",
         "**/node_modules/**",
         "**/package.json",
-        "**/docs/**",
-        "**/*.md"
+        "**/website/**",
+        "**/*.md",
+        "test/**"
       ]
     },
     "publish": {
-      "allowBranch": [
-        "main",
-        "next"
-      ],
+      "allowBranch": ["main", "next"],
       "ignoreChanges": [
         "**/CHANGELOG.md",
         "**/examples/*",
         "**/node_modules/**",
         "**/package.json",
-        "**/docs/**",
-        "**/*.md"
+        "**/website/**",
+        "**/*.md",
+        "test/**"
       ]
     }
   }

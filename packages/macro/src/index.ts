@@ -1,71 +1,148 @@
-import { createMacro } from "babel-plugin-macros"
-import { getConfig } from "@lingui/conf"
+import { createMacro, MacroParams } from "babel-plugin-macros"
+import { getConfig as loadConfig, LinguiConfigNormalized } from "@lingui/conf"
 
 import MacroJS from "./macroJs"
 import MacroJSX from "./macroJsx"
+import { NodePath } from "@babel/traverse"
+import {
+  ImportDeclaration,
+  Identifier,
+  isImportSpecifier,
+  isIdentifier,
+  JSXIdentifier,
+} from "@babel/types"
 
-const config = getConfig({ configPath: process.env.LINGUI_CONFIG })
-const [i18nImportModule, i18nImportName = "i18n"] = config.runtimeConfigModule
+export type LinguiMacroOpts = {
+  // explicitly set by CLI when running extraction process
+  extract?: boolean
+  linguiConfig?: LinguiConfigNormalized
+}
 
-function macro({ references, state, babel }) {
-  const jsxNodes = []
-  const jsNodes = []
+const jsMacroTags = new Set([
+  "defineMessage",
+  "msg",
+  "arg",
+  "t",
+  "plural",
+  "select",
+  "selectOrdinal",
+])
 
+const jsxMacroTags = new Set(["Trans", "Plural", "Select", "SelectOrdinal"])
+
+let config: LinguiConfigNormalized
+
+function getConfig(_config?: LinguiConfigNormalized) {
+  if (_config) {
+    config = _config
+  }
+  if (!config) {
+    config = loadConfig()
+  }
+  return config
+}
+
+function macro({ references, state, babel, config }: MacroParams) {
+  const opts: LinguiMacroOpts = config as LinguiMacroOpts
+
+  const {
+    i18nImportModule,
+    i18nImportName,
+    TransImportModule,
+    TransImportName,
+  } = getConfig(opts.linguiConfig).runtimeConfigModule
+
+  const jsxNodes = new Set<NodePath>()
+  const jsNodes = new Set<NodePath>()
+  let needsI18nImport = false
+
+  let nameMap = new Map<string, string>()
   Object.keys(references).forEach((tagName) => {
     const nodes = references[tagName]
-    const macroType = getMacroType(tagName)
-    if (macroType == null) {
-      throw nodes[0].buildCodeFrameError(`Unknown macro ${tagName}`)
-    }
 
-    if (macroType === "js") {
-      nodes.forEach((node) => {
-        jsNodes.push(node.parentPath)
+    if (jsMacroTags.has(tagName)) {
+      nodes.forEach((path) => {
+        nameMap.set(tagName, (path.node as Identifier).name)
+        jsNodes.add(path.parentPath)
+      })
+    } else if (jsxMacroTags.has(tagName)) {
+      // babel-plugin-macros return JSXIdentifier nodes.
+      // Which is for every JSX element would be presented twice (opening / close)
+      // Here we're taking JSXElement and dedupe it.
+      nodes.forEach((path) => {
+        nameMap.set(tagName, (path.node as JSXIdentifier).name)
+
+        // identifier.openingElement.jsxElement
+        jsxNodes.add(path.parentPath.parentPath)
       })
     } else {
-      nodes.forEach((node) => {
-        // identifier.openingElement.jsxElement
-        jsxNodes.push(node.parentPath.parentPath)
-      })
+      throw nodes[0].buildCodeFrameError(`Unknown macro ${tagName}`)
     }
   })
 
-  jsNodes.filter(isRootPath(jsNodes)).forEach((path) => {
-    if (alreadyVisited(path)) return
-    const macro = new MacroJS(babel, { i18nImportName })
-    macro.replacePath(path)
+  const stripNonEssentialProps =
+    process.env.NODE_ENV == "production" && !opts.extract
+
+  const jsNodesArray = Array.from(jsNodes)
+
+  jsNodesArray.filter(isRootPath(jsNodesArray)).forEach((path) => {
+    const macro = new MacroJS(babel, {
+      i18nImportName,
+      stripNonEssentialProps,
+      nameMap,
+    })
+    try {
+      if (macro.replacePath(path)) needsI18nImport = true
+    } catch (e) {
+      reportUnsupportedSyntax(path, e as Error)
+    }
   })
 
-  jsxNodes.filter(isRootPath(jsxNodes)).forEach((path) => {
-    if (alreadyVisited(path)) return
-    const macro = new MacroJSX(babel)
-    macro.replacePath(path)
+  const jsxNodesArray = Array.from(jsxNodes)
+
+  jsxNodesArray.filter(isRootPath(jsxNodesArray)).forEach((path) => {
+    const macro = new MacroJSX(babel, { stripNonEssentialProps, nameMap })
+
+    try {
+      macro.replacePath(path)
+    } catch (e) {
+      reportUnsupportedSyntax(path, e as Error)
+    }
   })
 
-  if (jsNodes.length) {
+  if (needsI18nImport) {
     addImport(babel, state, i18nImportModule, i18nImportName)
   }
 
-  if (jsxNodes.length) {
-    addImport(babel, state, "@lingui/react", "Trans")
-  }
-
-  if (process.env.LINGUI_EXTRACT === "1") {
-    return {
-      keepImports: true,
-    }
+  if (jsxNodes.size) {
+    addImport(babel, state, TransImportModule, TransImportName)
   }
 }
 
-function addImport(babel, state, module, importName) {
+function reportUnsupportedSyntax(path: NodePath, e: Error) {
+  throw path.buildCodeFrameError(
+    `Unsupported macro usage. Please check the examples at https://lingui.dev/ref/macro#examples-of-js-macros. 
+ If you think this is a bug, fill in an issue at https://github.com/lingui/js-lingui/issues
+ 
+ Error: ${e.message}`
+  )
+}
+
+function addImport(
+  babel: MacroParams["babel"],
+  state: MacroParams["state"],
+  module: string,
+  importName: string
+) {
   const { types: t } = babel
 
   const linguiImport = state.file.path.node.body.find(
-    (importNode) =>t.isImportDeclaration(importNode) &&
+    (importNode) =>
+      t.isImportDeclaration(importNode) &&
       importNode.source.value === module &&
       // https://github.com/lingui/js-lingui/issues/777
       importNode.importKind !== "type"
-  )
+  ) as ImportDeclaration
 
   const tIdentifier = t.identifier(importName)
   // Handle adding the import or altering the existing import
@@ -73,7 +150,8 @@ function addImport(babel, state, module, importName) {
     if (
       linguiImport.specifiers.findIndex(
         (specifier) =>
-          specifier.imported && specifier.imported.name === importName
+          isImportSpecifier(specifier) &&
+          isIdentifier(specifier.imported, { name: importName })
       ) === -1
     ) {
       linguiImport.specifiers.push(t.importSpecifier(tIdentifier, tIdentifier))
@@ -88,9 +166,16 @@ function addImport(babel, state, module, importName) {
   }
 }
 
-function isRootPath(allPath) {
-  return (node) =>
-    (function traverse(path) {
+/**
+ * Filtering nested macro calls
+ *
+ * <Macro>
+ *   <Macro /> <-- this would be filtered out
+ * </Macro>
+ */
+function isRootPath(allPath: NodePath[]) {
+  return (node: NodePath) =>
+    (function traverse(path): boolean {
       if (!path.parentPath) {
         return true
       } else {
@@ -99,33 +184,19 @@ function isRootPath(allPath) {
     })(node)
 }
 
-const alreadyVisitedCache = []
+;[...jsMacroTags, ...jsxMacroTags].forEach((name) => {
+  Object.defineProperty(module.exports, name, {
+    get() {
+      throw new Error(
+        `The macro you imported from "@lingui/macro" is being executed outside the context of compilation with babel-plugin-macros. ` +
+          `This indicates that you don't have the babel plugin "babel-plugin-macros" configured correctly. ` +
+          `Please see the documentation for how to configure babel-plugin-macros properly: ` +
+          "https://github.com/kentcdodds/babel-plugin-macros/blob/main/other/docs/user.md"
+      )
+    },
+  })
+})
 
-function alreadyVisited(path) {
-  if (alreadyVisitedCache.includes(path)) {
-    return true
-  } else {
-    alreadyVisitedCache.push(path)
-    return false
-  }
-}
-
-function getMacroType(tagName) {
-  switch (tagName) {
-    case "defineMessages":
-    case "defineMessage":
-    case "arg":
-    case "t":
-    case "plural":
-    case "select":
-    case "selectOrdinal":
-      return "js"
-    case "Trans":
-    case "Plural":
-    case "Select":
-    case "SelectOrdinal":
-      return "jsx"
-  }
-}
-
-export default createMacro(macro)
+export default createMacro(macro, {
+  configName: "lingui",
+})
